@@ -1,0 +1,10 @@
+; Godot project for the gdviz minimal example — basic shapes and colours.
+config_version=5
+
+[application]
+
+config/name="gdviz-minimal-example"
+
+[rendering]
+
+anti_aliasing/quality/msaa_3d=1

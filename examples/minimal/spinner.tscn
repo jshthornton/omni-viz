@@ -1,0 +1,72 @@
+[gd_scene load_steps=9 format=3]
+
+[ext_resource type="Script" path="res://demo_spin.gd" id="1_spin"]
+
+[sub_resource type="StandardMaterial3D" id="mat_floor"]
+albedo_color = Color(0.16, 0.17, 0.19, 1)
+roughness = 0.9
+
+[sub_resource type="StandardMaterial3D" id="mat_red"]
+albedo_color = Color(0.85, 0.26, 0.29, 1)
+
+[sub_resource type="StandardMaterial3D" id="mat_green"]
+albedo_color = Color(0.3, 0.76, 0.42, 1)
+
+[sub_resource type="StandardMaterial3D" id="mat_blue"]
+albedo_color = Color(0.36, 0.52, 0.92, 1)
+
+[sub_resource type="BoxMesh" id="mesh_floor"]
+size = Vector3(9, 0.2, 9)
+material = SubResource("mat_floor")
+
+[sub_resource type="BoxMesh" id="mesh_a"]
+size = Vector3(0.8, 0.8, 0.8)
+material = SubResource("mat_red")
+
+[sub_resource type="SphereMesh" id="mesh_b"]
+radius = 0.45
+height = 0.9
+material = SubResource("mat_green")
+
+[sub_resource type="CapsuleMesh" id="mesh_c"]
+radius = 0.32
+height = 1.3
+material = SubResource("mat_blue")
+
+[sub_resource type="Environment" id="env"]
+background_mode = 1
+background_color = Color(0.06, 0.07, 0.09, 1)
+ambient_light_source = 2
+ambient_light_color = Color(1, 1, 1, 1)
+ambient_light_energy = 0.35
+
+[node name="Spinner" type="Node3D"]
+script = ExtResource("1_spin")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("env")
+
+[node name="Sun" type="DirectionalLight3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.643, -0.766, 0, 0.766, 0.643, 0, 6, 6)
+shadow_enabled = true
+
+[node name="Camera3D" type="Camera3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.9839, -0.179, 0, 0.179, 0.9839, 0, 1.9, 4.9)
+
+[node name="Floor" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.6, 0)
+mesh = SubResource("mesh_floor")
+
+[node name="Rig" type="Node3D" parent="."]
+
+[node name="PieceA" type="MeshInstance3D" parent="Rig"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.6, 0.4, 0)
+mesh = SubResource("mesh_a")
+
+[node name="PieceB" type="MeshInstance3D" parent="Rig"]
+transform = Transform3D(-0.5, 0, 0.866025, 0, 1, 0, -0.866025, 0, -0.5, -0.8, 0.45, 1.386)
+mesh = SubResource("mesh_b")
+
+[node name="PieceC" type="MeshInstance3D" parent="Rig"]
+transform = Transform3D(-0.5, 0, -0.866025, 0, 1, 0, 0.866025, 0, -0.5, -0.8, 0.65, -1.386)
+mesh = SubResource("mesh_c")

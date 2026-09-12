@@ -1,0 +1,14 @@
+[tools]
+go = "latest"
+
+[tasks.build]
+description = "Build the omniviz binary → bin/omniviz"
+run = "go build -ldflags \"-s -w\" -o bin/omniviz ."
+
+[tasks.test]
+description = "Go unit tests (diff engine)"
+run = "go test ./..."
+
+[tasks.check]
+description = "go vet + go test + build"
+run = "go vet ./... && go test ./... && go build -o bin/omniviz ."

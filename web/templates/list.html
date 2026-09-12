@@ -1,0 +1,15 @@
+{{define "list"}}
+<div id="list-inner" hx-get="/frag/list" hx-trigger="every 10s [window.autoRefresh]" hx-target="this" hx-swap="outerHTML">
+  {{range .Jobs}}
+  <div class="job">
+    <div class="job-name">{{.ID}}</div>
+    {{range .Shots}}{{template "row" .}}{{end}}
+  </div>
+  {{else}}
+  <div class="empty-note">no shots in the current report — run <code>gdviz test</code></div>
+  {{end}}
+</div>
+{{end}}
+
+{{define "refresh_list"}}{{template "list" .List}}
+{{template "header_partial" .Header}}{{end}}

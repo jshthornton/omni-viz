@@ -1,0 +1,55 @@
+{{define "shot"}}
+<div class="detail-head">
+  <div class="detail-title">
+    <div class="detail-key">{{.Key}}</div>
+    <div class="detail-sub dim">{{.Scene}}{{if .Dims}} · {{.Dims}}{{end}} · threshold {{.ThresholdPct}} · changed-budget {{.MaxChangedPct}}{{if .Recording}} · {{.Frames}} recorded frames{{end}}</div>
+  </div>
+  <div class="detail-actions">
+    {{if .Recording}}<button class="btn" hx-get="/frag/frames/{{.Job}}" hx-target="#modal-content" hx-swap="innerHTML" data-open-modal>▶ recording</button>{{end}}
+    {{if .CanApprove}}<button class="btn primary" hx-post="/api/approve/{{.Key}}" hx-target="#detail" hx-swap="innerHTML">approve → baseline</button>
+    {{else if eq .Status "pass"}}<span class="ok-note">✓ baseline up to date</span>{{end}}
+  </div>
+</div>
+
+<div class="status-line st-{{.Status}}">
+  {{if eq .Status "pass"}}✓ matches baseline{{else if eq .Status "fail"}}✗ <b>{{.ChangedPct}}%</b> of pixels changed (budget {{.MaxChangedPct}}%) · {{.MismatchPixels}} px beyond the perceptual threshold — red: baseline was darker · green: current is darker · yellow: anti-aliasing (ignored){{else if eq .Status "new"}}+ new shot — no baseline yet; approve to adopt this image as the reference{{else if or (eq .Status "size") (eq .Status "error")}}✗ {{.Error}}{{else}}{{.Status}}{{end}}
+</div>
+
+<div id="modes" class="modes">
+  {{if .HasBaseline}}<button data-mode="overlay" {{if eq .Mode "overlay"}}class="active"{{end}}>overlay</button>
+  <button data-mode="side" {{if eq .Mode "side"}}class="active"{{end}}>side by side</button>
+  <button data-mode="baseline" {{if eq .Mode "baseline"}}class="active"{{end}}>baseline</button>{{end}}
+  <button data-mode="current" {{if eq .Mode "current"}}class="active"{{end}}>current</button>
+  {{if .HasDiff}}<button data-mode="diff" {{if eq .Mode "diff"}}class="active"{{end}}>diff</button>{{end}}
+</div>
+
+<div id="stage" data-mode="{{.Mode}}">
+  {{if .HasBaseline}}
+  <div class="pane" data-pane="overlay">
+    <div class="compare" id="compare" style="--pos:50%">
+      <img class="img-base" src="/img/baseline/{{.Key}}.png" alt="baseline">
+      <img class="img-cur" src="/img/current/{{.Key}}.png" alt="current" draggable="false">
+      <div class="divider"></div>
+      <span class="tag tag-l">baseline</span><span class="tag tag-r">current</span>
+    </div>
+  </div>
+  <div class="pane" data-pane="side">
+    <figure><figcaption>baseline</figcaption><img src="/img/baseline/{{.Key}}.png" alt="baseline"></figure>
+    <figure><figcaption>current</figcaption><img src="/img/current/{{.Key}}.png" alt="current"></figure>
+  </div>
+  <div class="pane" data-pane="baseline">
+    <figure><figcaption>baseline</figcaption><img src="/img/baseline/{{.Key}}.png" alt="baseline"></figure>
+  </div>
+  {{end}}
+  <div class="pane" data-pane="current">
+    <figure><figcaption>current{{if not .HasBaseline}} — no baseline yet{{end}}</figcaption><img src="/img/current/{{.Key}}.png" alt="current"></figure>
+  </div>
+  {{if .HasDiff}}
+  <div class="pane" data-pane="diff">
+    <figure><figcaption>diff heatmap</figcaption><img src="/img/diff/{{.Key}}.png" alt="diff"></figure>
+  </div>
+  {{end}}
+</div>
+
+{{if .Log}}<details class="log"><summary>godot log (tail)</summary><pre>{{.Log}}</pre></details>{{end}}
+{{end}}

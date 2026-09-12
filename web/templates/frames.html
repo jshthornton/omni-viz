@@ -1,0 +1,17 @@
+{{define "frames"}}
+<div class="modal-head">
+  <span><b>recording</b> · {{.Job}} · {{.Count}} frames <span class="dim">(playback only — never diffed)</span></span>
+  <button class="btn" onclick="closeModal()">✕ esc</button>
+</div>
+<div class="player"><img id="frame-img" data-job="{{.Job}}" src="/frame/{{.Job}}/0" alt="frame 0" draggable="false"></div>
+<div class="controls">
+  <button class="btn" id="play">▶</button>
+  <input type="range" id="scrub" min="0" max="{{.Max}}" value="0" step="1">
+  <span id="frame-no" class="dim">0 / {{.Max}}</span>
+  <select id="fps" class="btn">
+    <option value="5">5 fps</option>
+    <option value="15" selected>15 fps</option>
+    <option value="30">30 fps</option>
+  </select>
+</div>
+{{end}}

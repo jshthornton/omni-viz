@@ -1,0 +1,21 @@
+{{define "header"}}
+<div class="brand">gdviz <span class="dim">· {{.ProjectName}}{{if .Commit}} @ {{.Commit}}{{end}}</span></div>
+<div class="chips">
+  {{range .Chips}}<span class="chip chip-{{.Status}}"><b>{{.Count}}</b> {{.Label}}</span>{{end}}
+</div>
+{{if .Approvable}}<button class="btn primary" hx-post="/api/approve-all">approve {{.Approvable}} →</button>{{end}}
+<label class="auto-refresh"><input type="checkbox" id="autorefresh"> auto</label>
+<div class="meta dim">{{.GodotVersion}}{{if .GeneratedAt}} · {{.GeneratedAt}}{{end}}</div>
+{{end}}
+
+{{define "row"}}
+<button class="row st-{{.Status}}" id="row-{{.KeyURL}}" hx-get="/frag/shot/{{.Key}}" hx-target="#detail" hx-swap="innerHTML" hx-push-url="/shot/{{.Key}}">
+  <span class="dot"></span>
+  <span class="key">{{.Key}}</span>
+  {{if .Badge}}<span class="badge b-{{.Status}}">{{.Badge}}</span>{{end}}
+</button>
+{{end}}
+
+{{define "row_partial"}}<hx-partial hx-target="#row-{{.KeyURL}}" hx-swap="outerHTML">{{template "row" .}}</hx-partial>{{end}}
+
+{{define "header_partial"}}<hx-partial hx-target="#hdr">{{template "header" .}}</hx-partial>{{end}}

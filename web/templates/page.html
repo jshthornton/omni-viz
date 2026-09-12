@@ -1,0 +1,25 @@
+{{define "page"}}
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>gdviz · {{.Header.ProjectName}}</title>
+<link rel="stylesheet" href="/static/style.css">
+<script src="/static/htmx.min.js"></script>
+<script src="/static/app.js" defer></script>
+</head>
+<body>
+<header id="hdr">{{template "header" .Header}}</header>
+<div id="layout">
+  <aside id="list">{{template "list" .List}}</aside>
+  <main id="detail">
+    {{if .Detail}}{{template "shot" .Detail}}{{else}}<div class="empty">Select a shot on the left — or run <code>gdviz test</code> first.</div>{{end}}
+  </main>
+</div>
+<div id="modal" class="modal-backdrop" {{if not .Frames}}hidden{{end}}>
+  <div class="modal" id="modal-content">{{if .Frames}}{{template "frames" .Frames}}{{end}}</div>
+</div>
+</body>
+</html>
+{{end}}

@@ -1,0 +1,43 @@
+# omniviz example — basic shapes and colours
+baseline_dir = "baselines"
+output_dir = "tmp"
+
+[render]
+width = 960
+height = 600
+fps = 30
+max_frames = 120
+
+[defaults]
+record = true
+threshold = 0.1
+max_changed = 0.01
+timeout = 120
+
+[[shot]]
+name = "shapes"
+scene = "res://shapes.tscn"
+quit_after = 45
+record = false
+
+[[shot]]
+name = "spinner"
+scene = "res://spinner.tscn"
+quit_after = 90
+
+# The next two intentionally FAIL against the shipped (clean) baselines so
+# the example demonstrates the failure UI. See README.md here.
+
+[[shot]]
+name = "drift"
+scene = "res://shapes.tscn"
+quit_after = 45
+record = false
+args = ["--drift=0.18"]
+
+[[shot]]
+name = "mismatch"
+scene = "res://shapes.tscn"
+quit_after = 45
+record = false
+args = ["--broken"]
