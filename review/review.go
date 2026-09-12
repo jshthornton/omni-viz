@@ -1,10 +1,11 @@
-package main
+// Package review serves the local review UI: shot list, overlay slider,
+// diff heatmaps, recording scrubber and approvals.
+package review
 
 import (
 	"bytes"
 	"embed"
 	"encoding/json"
-	"flag"
 	"fmt"
 	"html/template"
 	"net/http"
@@ -12,10 +13,11 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
-	"sort"
 	"strconv"
 	"strings"
 	"time"
+
+	omniviz "github.com/jshthornton/omni-viz"
 )
 
 //go:embed web/templates/*.html
@@ -54,7 +56,7 @@ type chipView struct {
 type headerView struct {
 	ProjectName  string
 	Commit       string
-	GodotVersion string
+	ToolVersions string
 	GeneratedAt  string
 	Chips        []chipView
 	Approvable   int
@@ -85,7 +87,7 @@ type shotDetail struct {
 	Key            string
 	KeyURL         string
 	Job            string
-	Scene          string
+	Target         string
 	Status         string
 	Mode           string
 	Dims           string
@@ -124,13 +126,13 @@ func keyURL(key string) string {
 }
 
 type server struct {
-	c *runCtx
+	c *omniviz.RunContext
 }
 
-func (s *server) report() *Report {
-	r, err := loadReport(filepath.Join(s.c.output, "report.json"))
+func (s *server) report() *omniviz.Report {
+	r, err := omniviz.LoadReport(filepath.Join(s.c.Output, "report.json"))
 	if err != nil {
-		return &Report{}
+		return &omniviz.Report{}
 	}
 	return r
 }
@@ -143,11 +145,11 @@ var chipOrder = []struct{ status, label string }{
 	{"pass", "passing"},
 }
 
-func buildHeader(s *server, r *Report) headerView {
+func buildHeader(s *server, r *omniviz.Report) headerView {
 	h := headerView{
-		ProjectName:  filepath.Base(s.c.project),
+		ProjectName:  filepath.Base(s.c.Project),
 		Commit:       r.Commit,
-		GodotVersion: r.GodotVersion,
+		ToolVersions: strings.Join(s.c.VersionLabels(), " · "),
 	}
 	if r.GeneratedAt != "" {
 		if t, err := time.Parse(time.RFC3339, r.GeneratedAt); err == nil {
@@ -165,7 +167,7 @@ func buildHeader(s *server, r *Report) headerView {
 	return h
 }
 
-func buildList(r *Report) listData {
+func buildList(r *omniviz.Report) listData {
 	var jobs []jobView
 	byID := map[string]*jobView{}
 	for _, shot := range r.Shots {
@@ -181,7 +183,7 @@ func buildList(r *Report) listData {
 	return listData{Jobs: jobs}
 }
 
-func failBadge(shot ShotResult) string {
+func failBadge(shot omniviz.ShotResult) string {
 	switch shot.Status {
 	case "fail":
 		return pct1(shot.ChangedRatio) + "%"
@@ -195,7 +197,7 @@ func failBadge(shot ShotResult) string {
 
 func pct1(v float64) string { return fmt.Sprintf("%.1f", v*100) }
 
-func buildDetail(s *server, r *Report, key string) *shotDetail {
+func buildDetail(s *server, r *omniviz.Report, key string) *shotDetail {
 	for _, shot := range r.Shots {
 		if shot.Key != key {
 			continue
@@ -204,7 +206,7 @@ func buildDetail(s *server, r *Report, key string) *shotDetail {
 			Key:            shot.Key,
 			KeyURL:         keyURL(shot.Key),
 			Job:            shot.Job,
-			Scene:          shot.Scene,
+			Target:         shot.Target,
 			Status:         shot.Status,
 			ThresholdPct:   pct1(shot.Threshold) + "%",
 			MaxChangedPct:  pct1(shot.MaxChanged),
@@ -220,9 +222,9 @@ func buildDetail(s *server, r *Report, key string) *shotDetail {
 		if shot.Width > 0 {
 			d.Dims = fmt.Sprintf("%dx%d", shot.Width, shot.Height)
 		}
-		d.HasBaseline = fileExists(filepath.Join(s.c.baselines, filepath.FromSlash(key)+".png"))
-		d.HasCurrent = fileExists(filepath.Join(s.c.output, "current", key+".png"))
-		d.HasDiff = fileExists(filepath.Join(s.c.output, "diff", key+".png"))
+		d.HasBaseline = fileExists(filepath.Join(s.c.Baselines, filepath.FromSlash(key)+".png"))
+		d.HasCurrent = fileExists(filepath.Join(s.c.Output, "current", key+".png"))
+		d.HasDiff = fileExists(filepath.Join(s.c.Output, "diff", key+".png"))
 		d.CanApprove = d.HasCurrent && (shot.Status == "fail" || shot.Status == "new" || shot.Status == "size")
 		return d
 	}
@@ -271,7 +273,7 @@ func (s *server) handlePage(w http.ResponseWriter, r *http.Request, detailKey st
 }
 
 func buildFramesView(s *server, job string) *framesView {
-	frames := listFrames(filepath.Join(s.c.output, "frames", job))
+	frames := omniviz.ListFrames(filepath.Join(s.c.Output, "frames", job))
 	if len(frames) == 0 {
 		return nil
 	}
@@ -306,7 +308,7 @@ func (s *server) handleShotFragment(w http.ResponseWriter, key string) {
 }
 
 func (s *server) handleApprove(w http.ResponseWriter, key string) {
-	approved, err := approveKeys(s.c, []string{key})
+	approved, err := s.c.ApproveKeys([]string{key})
 	if err != nil || len(approved) == 0 {
 		msg := fmt.Sprintf("approve failed: %v", err)
 		http.Error(w, msg, http.StatusUnprocessableEntity)
@@ -336,7 +338,7 @@ func (s *server) handleApprove(w http.ResponseWriter, key string) {
 	w.Write(buf.Bytes())
 }
 
-func shotRowFrom(r *Report, key string) shotRow {
+func shotRowFrom(r *omniviz.Report, key string) shotRow {
 	for _, shot := range r.Shots {
 		if shot.Key == key {
 			row := shotRow{Key: shot.Key, KeyURL: keyURL(shot.Key), Status: shot.Status}
@@ -348,17 +350,17 @@ func shotRowFrom(r *Report, key string) shotRow {
 }
 
 func (s *server) handleApproveAll(w http.ResponseWriter, r *http.Request) {
-	keys, err := pendingKeys(s.c)
+	keys, err := s.c.PendingKeys()
 	if err == nil && len(keys) > 0 {
-		approveKeys(s.c, keys)
+		s.c.ApproveKeys(keys)
 	}
 	w.Header().Set("HX-Refresh", "true")
 	w.WriteHeader(http.StatusNoContent)
 }
 
 func (s *server) handleFramesFragment(w http.ResponseWriter, job string) {
-	dir := filepath.Join(s.c.output, "frames", job)
-	frames := listFrames(dir)
+	dir := filepath.Join(s.c.Output, "frames", job)
+	frames := omniviz.ListFrames(dir)
 	if len(frames) == 0 {
 		http.Error(w, "no recording frames found for "+job, http.StatusNotFound)
 		return
@@ -376,32 +378,17 @@ func (s *server) handleFramesFragment(w http.ResponseWriter, job string) {
 	w.Write(body)
 }
 
-func listFrames(dir string) []string {
-	entries, err := os.ReadDir(dir)
-	if err != nil {
-		return nil
-	}
-	var out []string
-	for _, e := range entries {
-		if !e.IsDir() && strings.HasSuffix(e.Name(), ".png") {
-			out = append(out, filepath.Join(dir, e.Name()))
-		}
-	}
-	sort.Strings(out)
-	return out
-}
-
 func (s *server) handleImg(w http.ResponseWriter, r *http.Request) {
 	kind := r.PathValue("kind")
 	key := strings.TrimSuffix(r.PathValue("key"), ".png")
 	var dir string
 	switch kind {
 	case "baseline":
-		dir = s.c.baselines
+		dir = s.c.Baselines
 	case "current":
-		dir = filepath.Join(s.c.output, "current")
+		dir = filepath.Join(s.c.Output, "current")
 	case "diff":
-		dir = filepath.Join(s.c.output, "diff")
+		dir = filepath.Join(s.c.Output, "diff")
 	default:
 		http.NotFound(w, r)
 		return
@@ -422,7 +409,7 @@ func (s *server) handleFrame(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	frames := listFrames(filepath.Join(s.c.output, "frames", job))
+	frames := omniviz.ListFrames(filepath.Join(s.c.Output, "frames", job))
 	if n >= len(frames) {
 		http.NotFound(w, r)
 		return
@@ -499,24 +486,16 @@ func (s *server) routes() *http.ServeMux {
 	return mux
 }
 
-func cmdReview(argv []string) error {
-	fs := flag.NewFlagSet("review", flag.ExitOnError)
-	project := fs.String("project", ".", "project root containing omniviz.toml")
-	port := fs.Int("port", 8420, "port to listen on")
-	noOpen := fs.Bool("no-open", false, "do not open the browser")
-	fs.Parse(argv)
-	c, err := loadCtx(*project)
-	if err != nil {
-		return err
-	}
+// Serve runs the review UI for a project until the process exits.
+func Serve(rc *omniviz.RunContext, port int, noOpen bool) error {
 	if err := initTemplates(); err != nil {
 		return err
 	}
-	s := &server{c: c}
-	addr := fmt.Sprintf("127.0.0.1:%d", *port)
+	s := &server{c: rc}
+	addr := fmt.Sprintf("127.0.0.1:%d", port)
 	url := fmt.Sprintf("http://%s", addr)
 	fmt.Printf("omniviz review: %s  (ctrl-c to stop)\n", url)
-	if !*noOpen {
+	if !noOpen {
 		go func() {
 			time.Sleep(300 * time.Millisecond)
 			exec.Command("xdg-open", url).Start()

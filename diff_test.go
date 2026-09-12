@@ -1,4 +1,4 @@
-package main
+package omniviz
 
 import (
 	"image"
@@ -23,7 +23,7 @@ func makePNG(t *testing.T, dir, name string, w, h int, fill color.RGBA, override
 		}
 	}
 	path := filepath.Join(dir, name)
-	if err := savePNG(path, img); err != nil {
+	if err := SavePNG(path, img); err != nil {
 		t.Fatalf("save %s: %v", name, err)
 	}
 	return path
@@ -127,7 +127,7 @@ func TestAntiAliasedEdgeIgnored(t *testing.T) {
 func TestPngDimsRoundtrip(t *testing.T) {
 	dir := t.TempDir()
 	p := makePNG(t, dir, "d.png", 31, 17, color.RGBA{A: 255}, nil)
-	dims, err := pngDims(p)
+	dims, err := PNGDims(p)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -160,7 +160,7 @@ func TestDecimate(t *testing.T) {
 		p := filepath.Join(dir, "frame"+string(rune('a'+i))+".png")
 		os.WriteFile(p, []byte("x"), 0o644)
 	}
-	n := decimateFrames(dir, 4)
+	n := DecimateFrames(dir, 4)
 	if n != 4 {
 		t.Fatalf("decimate kept %d, want 4", n)
 	}

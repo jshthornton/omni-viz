@@ -2,7 +2,7 @@
 <div class="detail-head">
   <div class="detail-title">
     <div class="detail-key">{{.Key}}</div>
-    <div class="detail-sub dim">{{.Scene}}{{if .Dims}} · {{.Dims}}{{end}} · threshold {{.ThresholdPct}} · changed-budget {{.MaxChangedPct}}{{if .Recording}} · {{.Frames}} recorded frames{{end}}</div>
+    <div class="detail-sub dim">{{.Target}}{{if .Dims}} · {{.Dims}}{{end}} · threshold {{.ThresholdPct}} · changed-budget {{.MaxChangedPct}}{{if .Recording}} · {{.Frames}} recorded frames{{end}}</div>
   </div>
   <div class="detail-actions">
     {{if .Recording}}<button class="btn" hx-get="/frag/frames/{{.Job}}" hx-target="#modal-content" hx-swap="innerHTML" data-open-modal>▶ recording</button>{{end}}
@@ -51,5 +51,5 @@
   {{end}}
 </div>
 
-{{if .Log}}<details class="log"><summary>godot log (tail)</summary><pre>{{.Log}}</pre></details>{{end}}
+{{if .Log}}<details class="log"><summary>capture log (tail)</summary><pre>{{.Log}}</pre></details>{{end}}
 {{end}}

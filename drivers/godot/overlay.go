@@ -1,4 +1,4 @@
-package main
+package godot
 
 import (
 	"fmt"
@@ -7,6 +7,10 @@ import (
 	"strings"
 )
 
+// BuildOverlay materializes a temp "project" that symlinks the real project
+// and layers an override.cfg on top: fixed window size, no focus, borderless
+// off. Captures therefore never fight the desktop, project settings or
+// settings autoloads. The caller removes the overlay when done.
 var overlayExcluded = map[string]bool{
 	".git":          true,
 	".pi-subagents": true,
@@ -23,7 +27,7 @@ type settingOverride struct {
 	value   string
 }
 
-func buildOverlay(project string, width, height int, extraSets []string) (string, error) {
+func BuildOverlay(project string, width, height int, extraSets []string) (string, error) {
 	overlay, err := os.MkdirTemp("", "omniviz-project-")
 	if err != nil {
 		return "", err

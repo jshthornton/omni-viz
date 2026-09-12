@@ -1,4 +1,4 @@
-package main
+package omniviz
 
 import (
 	"encoding/json"
@@ -14,7 +14,7 @@ import (
 type ShotResult struct {
 	Key            string  `json:"key"`
 	Job            string  `json:"job"`
-	Scene          string  `json:"scene"`
+	Target         string  `json:"target"`
 	Status         string  `json:"status"`
 	Threshold      float64 `json:"threshold"`
 	MaxChanged     float64 `json:"max_changed"`
@@ -33,12 +33,12 @@ type ShotResult struct {
 }
 
 type Report struct {
-	GeneratedAt  string         `json:"generated_at"`
-	Project      string         `json:"project"`
-	GodotVersion string         `json:"godot_version"`
-	Commit       string         `json:"commit"`
-	Summary      map[string]int `json:"summary"`
-	Shots        []ShotResult   `json:"shots"`
+	GeneratedAt string            `json:"generated_at"`
+	Project     string            `json:"project"`
+	Versions    map[string]string `json:"versions,omitempty"` // driver name → version label
+	Commit      string            `json:"commit"`
+	Summary     map[string]int    `json:"summary"`
+	Shots       []ShotResult      `json:"shots"`
 }
 
 var statusOrder = []string{"pass", "fail", "new", "size", "missing", "error", "captured"}
@@ -58,7 +58,7 @@ func (r *Report) Finish() {
 	r.Summary["total"] = len(r.Shots)
 }
 
-func saveReport(path string, r *Report) error {
+func SaveReport(path string, r *Report) error {
 	data, err := json.MarshalIndent(r, "", "  ")
 	if err != nil {
 		return err
@@ -66,7 +66,7 @@ func saveReport(path string, r *Report) error {
 	return os.WriteFile(path, append(data, '\n'), 0o644)
 }
 
-func loadReport(path string) (*Report, error) {
+func LoadReport(path string) (*Report, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
@@ -78,7 +78,7 @@ func loadReport(path string) (*Report, error) {
 	return &r, nil
 }
 
-func gitCommit(project string) string {
+func GitCommit(project string) string {
 	out, err := exec.Command("git", "-C", project, "rev-parse", "--short", "HEAD").Output()
 	if err != nil {
 		return ""
@@ -86,9 +86,11 @@ func gitCommit(project string) string {
 	return strings.TrimSpace(string(out))
 }
 
-func compareShot(c *runCtx, r *ShotResult) {
-	base := filepath.Join(c.baselines, filepath.FromSlash(r.Key)+".png")
-	cur := filepath.Join(c.output, "current", r.Key+".png")
+// CompareShot diffs a captured shot against its baseline and updates the
+// result in place: pass / new / size / fail (+ diff heatmap on disk).
+func (c *RunContext) CompareShot(r *ShotResult) {
+	base := filepath.Join(c.Baselines, filepath.FromSlash(r.Key)+".png")
+	cur := filepath.Join(c.Output, "current", r.Key+".png")
 	if _, err := os.Stat(base); err != nil {
 		r.Status = "new"
 		return
@@ -115,13 +117,27 @@ func compareShot(c *runCtx, r *ShotResult) {
 	}
 	r.Status = "fail"
 	if diffImg != nil {
-		if err := savePNG(filepath.Join(c.output, "diff", r.Key+".png"), diffImg); err != nil {
+		if err := SavePNG(filepath.Join(c.Output, "diff", r.Key+".png"), diffImg); err != nil {
 			fmt.Fprintf(os.Stderr, "omniviz: warning: save diff %s: %v\n", r.Key, err)
 		}
 	}
 }
 
-func printSummary(r *Report) {
+// Rediff normalizes settings from an older report and re-compares every
+// shot (the `compare` command).
+func (c *RunContext) Rediff(shots []ShotResult) {
+	for i := range shots {
+		if shots[i].Threshold <= 0 {
+			shots[i].Threshold = c.Config.Defaults.Threshold
+		}
+		if shots[i].MaxChanged <= 0 {
+			shots[i].MaxChanged = c.Config.Defaults.MaxChanged
+		}
+		c.CompareShot(&shots[i])
+	}
+}
+
+func PrintSummary(r *Report) {
 	var parts []string
 	for _, st := range statusOrder {
 		if n := r.Summary[st]; n > 0 {
@@ -143,7 +159,7 @@ func printSummary(r *Report) {
 	}
 }
 
-func exitError(r *Report, failOnNew bool) error {
+func ExitError(r *Report, failOnNew bool) error {
 	bad := r.Summary["fail"] + r.Summary["size"] + r.Summary["error"] + r.Summary["missing"]
 	if bad > 0 {
 		return fmt.Errorf("%d shot(s) need attention — run `omniviz review` to inspect and approve", bad)

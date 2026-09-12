@@ -1,12 +1,9 @@
-package main
+package omniviz
 
 import (
 	"fmt"
 	"image"
-	"image/draw"
-	"image/png"
 	"math"
-	"os"
 )
 
 // DiffResult carries the outcome of comparing two PNGs.
@@ -34,8 +31,8 @@ type DiffResult struct {
 // tolerates but a visual regression suite must not.
 
 const (
-	noiseFloor = 2.0  // per-channel sRGB delta considered "no change"
-	dimAlpha   = 0.1  // dimming of unchanged pixels in the diff image
+	noiseFloor = 2.0 // per-channel sRGB delta considered "no change"
+	dimAlpha   = 0.1 // dimming of unchanged pixels in the diff image
 )
 
 var (
@@ -44,60 +41,15 @@ var (
 	aaColor      = [4]uint8{255, 255, 0, 255}
 )
 
-func loadRGBA(path string) (*image.RGBA, error) {
-	f, err := os.Open(path)
-	if err != nil {
-		return nil, err
-	}
-	defer f.Close()
-	img, err := png.Decode(f)
-	if err != nil {
-		return nil, err
-	}
-	return toRGBA(img), nil
-}
-
-func toRGBA(img image.Image) *image.RGBA {
-	if r, ok := img.(*image.RGBA); ok && r.Rect.Min == image.Pt(0, 0) {
-		return r
-	}
-	b := img.Bounds()
-	out := image.NewRGBA(image.Rect(0, 0, b.Dx(), b.Dy()))
-	draw.Draw(out, out.Bounds(), img, b.Min, draw.Src)
-	return out
-}
-
-func pngDims(path string) (image.Point, error) {
-	f, err := os.Open(path)
-	if err != nil {
-		return image.Point{}, err
-	}
-	defer f.Close()
-	cfg, err := png.DecodeConfig(f)
-	if err != nil {
-		return image.Point{}, err
-	}
-	return image.Pt(cfg.Width, cfg.Height), nil
-}
-
-func savePNG(path string, img image.Image) error {
-	f, err := os.Create(path)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-	return png.Encode(f, img)
-}
-
 // ComparePNG diffs two PNG files and produces a diff visualization.
 // threshold follows pixelmatch semantics (0..1, default 0.1; smaller is more
 // sensitive). The caller applies the changed-area budget to res.ChangedRatio.
 func ComparePNG(pathA, pathB string, threshold float64) (DiffResult, *image.RGBA, error) {
-	a, err := loadRGBA(pathA)
+	a, err := LoadRGBA(pathA)
 	if err != nil {
 		return DiffResult{}, nil, fmt.Errorf("baseline: %w", err)
 	}
-	b, err := loadRGBA(pathB)
+	b, err := LoadRGBA(pathB)
 	if err != nil {
 		return DiffResult{}, nil, fmt.Errorf("current: %w", err)
 	}

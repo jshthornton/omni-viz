@@ -1,11 +1,11 @@
 {{define "header"}}
-<div class="brand">gdviz <span class="dim">· {{.ProjectName}}{{if .Commit}} @ {{.Commit}}{{end}}</span></div>
+<div class="brand">omniviz <span class="dim">· {{.ProjectName}}{{if .Commit}} @ {{.Commit}}{{end}}</span></div>
 <div class="chips">
   {{range .Chips}}<span class="chip chip-{{.Status}}"><b>{{.Count}}</b> {{.Label}}</span>{{end}}
 </div>
 {{if .Approvable}}<button class="btn primary" hx-post="/api/approve-all">approve {{.Approvable}} →</button>{{end}}
 <label class="auto-refresh"><input type="checkbox" id="autorefresh"> auto</label>
-<div class="meta dim">{{.GodotVersion}}{{if .GeneratedAt}} · {{.GeneratedAt}}{{end}}</div>
+<div class="meta dim">{{.ToolVersions}}{{if .GeneratedAt}} · {{.GeneratedAt}}{{end}}</div>
 {{end}}
 
 {{define "row"}}
