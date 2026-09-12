@@ -1,0 +1,36 @@
+# omniviz example — visual regression testing a website (web driver)
+#
+# The web driver keeps one warm headless Chrome for the whole run, opens an
+# isolated tab per shot, waits for fonts/readyState, freezes animations and
+# carets, then screenshots. Targets are URLs or project-relative file paths.
+baseline_dir = "baselines"
+output_dir = "tmp"
+
+[render]
+width = 1280
+height = 800
+
+[defaults]
+driver = "web"
+record = false
+threshold = 0.1
+max_changed = 0.01
+timeout = 60
+
+[driver.web]
+# browser = "/usr/bin/chromium"   # else $OMNIVIZ_BROWSER, then PATH auto-detect
+# full_page = true                # capture the scrollable page, not just the viewport
+
+[[shot]]
+name = "dashboard"
+target = "site/index.html"        # animated page — captures must still be deterministic
+
+[[shot]]
+name = "audit"
+target = "site/audit.html"
+
+# intentionally FAILS: a stat card is missing and the accent hue shifted —
+# the classic "deploy quietly ate the layout" regression
+[[shot]]
+name = "broken"
+target = "site/broken.html"

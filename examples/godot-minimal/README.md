@@ -1,6 +1,7 @@
-# omniviz example — minimal Godot project (shapes + colours)
+# omniviz example — godot driver (shapes + colours)
 
-Run it from this directory (godot on PATH, or `OMNIVIZ_GODOT=/path/to/godot`):
+Requires a GPU/display and godot 4.x (`godot` on PATH, or `OMNIVIZ_GODOT=/path/to/godot`,
+or `[driver.godot] binary=` in `omniviz.toml`):
 
 ```bash
 omniviz test                       # 1st run: 4 shots, 2 will fail — by design
@@ -25,4 +26,4 @@ Baselines were captured on one machine; other GPUs may differ slightly in
 dither/AA. If everything fails on your machine, that's the tool working —
 run `omniviz approve --all` once to adopt your machine's render.
 
-Requires a GPU/display (Godot renders for real); godot 4.3+ on PATH.
+Requires a GPU/display (Godot renders for real); godot 4.3+ is supported.

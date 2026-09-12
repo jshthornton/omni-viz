@@ -3,8 +3,10 @@ package omniviz
 import (
 	"fmt"
 	"os"
+	"path"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -121,6 +123,12 @@ func LoadConfig(path string) (*Config, error) {
 		return nil, fmt.Errorf("parse %s: %w", path, err)
 	}
 	for _, key := range meta.Undecoded() {
+		// [driver.<name>] and shot.driver_options belong to drivers, which
+		// decode them lazily (BurntSushi also lists primitive children as
+		// undecoded) — never warn about driver-owned keys.
+		if key[0] == "driver" || slices.Contains(key, "driver_options") {
+			continue
+		}
 		fmt.Fprintf(os.Stderr, "omniviz: warning: unknown config key %q in %s\n", key.String(), path)
 	}
 	cfg.meta = meta
@@ -158,9 +166,8 @@ func (c *Config) validate() error {
 	seen := map[string]bool{}
 	for i := range c.Shots {
 		s := &c.Shots[i]
-		if s.effectiveTarget() == "" {
-			return fmt.Errorf("shot %d: missing target", i+1)
-		}
+		// target is driver-owned: godot/web require one and validate it
+		// themselves; command shots don't need it (the command is the target)
 		if len(s.Paths) == 0 && s.Name == "" {
 			return fmt.Errorf("shot %d: multi mode (no name) requires paths", i+1)
 		}
@@ -247,8 +254,17 @@ func (c *Config) Jobs() []Job {
 		}
 		j.Multi = s.Name == ""
 		if j.Multi {
+			// id from the target stem; command-style multi shots without a
+			// target fall back to their first glob's directory name
 			base := filepath.Base(filepath.FromSlash(s.Target))
 			j.ID = strings.TrimSuffix(base, filepath.Ext(base))
+			if j.ID == "" || j.ID == "." || j.ID == "/" {
+				if label := multiLabel(s.Paths); label != "" {
+					j.ID = label
+				} else {
+					j.ID = fmt.Sprintf("shot-%d", i+1)
+				}
+			}
 		} else {
 			j.Key, _ = SanitizeKey(s.Name)
 			j.ID = j.Key
@@ -314,6 +330,19 @@ func (c *Config) Jobs() []Job {
 		jobs = append(jobs, j)
 	}
 	return jobs
+}
+
+// multiLabel derives a job label from a paths glob: the literal directory
+// name the files land in ("tmp/shots/*.png" → "shots").
+func multiLabel(patterns []string) string {
+	for _, p := range patterns {
+		dir := filepath.ToSlash(filepath.Dir(filepath.FromSlash(p)))
+		base := path.Base(dir)
+		if base != "" && base != "." && base != "/" && !strings.ContainsAny(base, "*?[") {
+			return base
+		}
+	}
+	return ""
 }
 
 func parseSize(s string) (int, int, error) {

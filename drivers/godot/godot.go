@@ -70,6 +70,9 @@ func (d *Driver) Capture(ctx context.Context, rc *omniviz.RunContext, job omnivi
 	if opts == nil {
 		opts = &Options{}
 	}
+	if job.Target == "" {
+		return omniviz.CaptureResult{}, fmt.Errorf("godot shot %q needs a target (a res:// scene path)", job.ID)
+	}
 	generic := len(job.Paths) == 0
 	record := env.Record
 	if generic {

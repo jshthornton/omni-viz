@@ -1,0 +1,42 @@
+# omniviz example — visual regression testing a *process* (command driver)
+#
+# The command driver runs any executable and collects the PNGs it writes.
+# Here it's a tiny Go renderer — a stand-in for a Unity batchmode script,
+# an Unreal commandlet, a .NET form, a terminal UI: anything that can save
+# an image and exit.
+baseline_dir = "baselines"
+output_dir = "tmp"
+
+[render]
+width = 480
+height = 320
+
+[defaults]
+driver = "command"
+record = false
+threshold = 0.1
+max_changed = 0.01
+timeout = 120
+
+[[shot]]
+name = "report"
+# no paths → PNGs written to $OMNIVIZ_OUTPUT (the per-job scratch dir)
+# are auto-collected
+driver_options = { command = ["go", "run", "./render", "--set=report", "--variant=clean"] }
+
+# multi mode (no name): one shot per matched file, named by file stem —
+# the renderer writes panels into the project's tmp/shots, collected by glob
+[[shot]]
+driver_options = { command = ["go", "run", "./render", "--set=panels", "--variant=clean"] }
+paths = ["tmp/shots/*.png"]
+
+# The next two intentionally FAIL against the shipped (clean) baselines:
+#   drift   — global brightness shift   → changed-area budget failure
+#   mismatch — a bar collapses, the gauge swings → per-pixel failure
+[[shot]]
+name = "drift"
+driver_options = { command = ["go", "run", "./render", "--set=report", "--variant=drift"] }
+
+[[shot]]
+name = "mismatch"
+driver_options = { command = ["go", "run", "./render", "--set=report", "--variant=broken"] }

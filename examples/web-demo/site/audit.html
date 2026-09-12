@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>omniviz web-demo — dashboard</title>
+<style>
+  :root { --bg:#0d1117; --panel:#161b22; --border:#21262d; --fg:#e6edf3; --dim:#8b949e; --accent:#58a6ff; --good:#3fb950; --blue:#58a6ff; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:14px/1.45 system-ui,sans-serif; }
+  header { display:flex; align-items:center; gap:14px; padding:14px 20px; background:var(--panel); border-bottom:1px solid var(--border); }
+  .logo { width:26px; height:26px; border-radius:50%; background:var(--accent); }
+  /* the pulse proves captures freeze animations: two runs must match */
+  .pulse { width:12px; height:12px; border-radius:50%; background:var(--good); animation:pulse 1s ease-in-out infinite; }
+  @keyframes pulse { 0%,100% { opacity:1; transform:scale(1);} 50% { opacity:.35; transform:scale(.72);} }
+  h1 { font-size:15px; margin:0; font-weight:600; }
+  .meta { color:var(--dim); font-size:12px; margin-left:auto; }
+  .grid { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; padding:20px; }
+  .card { background:var(--panel); border:1px solid var(--border); border-radius:10px; padding:16px; }
+  .card h2 { font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:var(--dim); margin:0 0 10px; }
+  .stat { font-size:26px; font-weight:700; }
+  .delta { color:var(--good); font-size:12px; }
+  .chart { display:flex; align-items:flex-end; gap:10px; height:120px; padding-top:6px; }
+  .bar { flex:1; border-radius:4px 4px 0 0; background:var(--blue); }
+  .bar:nth-child(2n) { background:var(--good); }
+  .bar:nth-child(3n) { background:var(--accent); }
+  .ring { display:block; margin:0 auto; }
+  .ring-fg { stroke:var(--accent); stroke-dasharray:264; stroke-dashoffset:66; animation:spin 3s linear infinite; }
+  @keyframes spin { from { stroke-dashoffset:264;} to { stroke-dashoffset:66;} }
+</style>
+</head>
+<body>
+<header>
+  <div class="logo"></div>
+  <h1>audit log</h1>
+  <div class="pulse" title="animates — frozen in captures"></div>
+  <span class="meta">omniviz web driver demo</span>
+</header>
+<div class="grid">
+  <div class="card"><h2>p95 latency</h2><div class="stat">212ms</div><span class="delta">▼ 8ms</span></div>
+  <div class="card"><h2>errors</h2><div class="stat">0.3%</div><span class="delta">▲ 0.1%</span></div>
+  <div class="card"><h2>weekly load</h2>
+    <div class="chart">
+      <div class="bar" style="height:42%"></div><div class="bar" style="height:66%"></div>
+      <div class="bar" style="height:31%"></div><div class="bar" style="height:84%"></div>
+      <div class="bar" style="height:57%"></div><div class="bar" style="height:73%"></div>
+      <div class="bar" style="height:49%"></div>
+    </div>
+  </div>
+  <div class="card" style="grid-column:2"><h2>cache hit ring</h2>
+    <svg class="ring" width="96" height="96" viewBox="0 0 96 96">
+      <circle cx="48" cy="48" r="42" fill="none" stroke="#21262d" stroke-width="8"/>
+      <circle class="ring-fg" cx="48" cy="48" r="42" fill="none" stroke-width="8" stroke-linecap="round" transform="rotate(-90 48 48)"/>
+    </svg>
+  </div>
+</div>
+</body>
+</html>

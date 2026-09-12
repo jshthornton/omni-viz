@@ -1,4 +1,4 @@
-# omniviz example — basic shapes and colours
+# omniviz example — basic shapes and colours (godot driver)
 baseline_dir = "baselines"
 output_dir = "tmp"
 
@@ -9,20 +9,25 @@ fps = 30
 max_frames = 120
 
 [defaults]
+driver = "godot"
 record = true
 threshold = 0.1
 max_changed = 0.01
 timeout = 120
 
+[driver.godot]
+# binary = "~/engines/godot4"     # else $OMNIVIZ_GODOT, then PATH
+display_driver = "x11"            # linux only
+
 [[shot]]
 name = "shapes"
-scene = "res://shapes.tscn"
+target = "res://shapes.tscn"
 quit_after = 45
 record = false
 
 [[shot]]
 name = "spinner"
-scene = "res://spinner.tscn"
+target = "res://spinner.tscn"
 quit_after = 90
 
 # The next two intentionally FAIL against the shipped (clean) baselines so
@@ -30,14 +35,14 @@ quit_after = 90
 
 [[shot]]
 name = "drift"
-scene = "res://shapes.tscn"
+target = "res://shapes.tscn"
 quit_after = 45
 record = false
 args = ["--drift=0.18"]
 
 [[shot]]
 name = "mismatch"
-scene = "res://shapes.tscn"
+target = "res://shapes.tscn"
 quit_after = 45
 record = false
 args = ["--broken"]
