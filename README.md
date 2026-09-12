@@ -50,9 +50,11 @@ companion website (web) in the same run, same report, same review UI.
 
 | driver | captures | example |
 |---|---|---|
-| `godot` | Godot 4 scenes — movie-writer frames (generic) or scene-saved PNGs (cooperative) | [`examples/godot-minimal`](examples/godot-minimal) |
-| `command` | **any process** — runs an argv or shell script, collects the images. The universal escape hatch: Unity batchmode, Unreal commandlets, .NET/WPF apps, CLI/TUI screenshots | [`examples/cli-demo`](examples/cli-demo) |
-| `web` | pages in a Chrome-family browser — Chromatic-style: one warm browser, tab per shot, animations frozen, fonts settled | [`examples/web-demo`](examples/web-demo) |
+| `godot` | Godot 4 scenes — movie-writer frames (generic) or scene-saved PNGs (cooperative) | [`examples/godot-minimal`](examples/godot-minimal) ✅ |
+| `command` | **any process** — runs an argv or shell script, collects the images. The universal escape hatch: Unity batchmode, Unreal commandlets, .NET/WPF apps, Delphi VCL/FMX, Android via adb, CLI/TUI screenshots | [`examples/cli-demo`](examples/cli-demo) ✅ |
+| `web` | pages in a Chrome-family browser — Chromatic-style: one warm browser, tab per shot, animations frozen, fonts settled | [`examples/web-demo`](examples/web-demo) ✅ |
+
+Per-engine recipes under [`examples/`](examples): [`unity-capture`](examples/unity-capture) (batchmode + ScreenCapture), [`unreal-capture`](examples/unreal-capture) (test maps + HighResShot), [`winforms-capture`](examples/winforms-capture) (DrawToBitmap), [`delphi-capture`](examples/delphi-capture) (GetFormImage), [`android-capture`](examples/android-capture) (adb screencap). ✅ = captured/diffed/reviewed end-to-end in this repo; 📋 = recipe with the engine's standard capture idiom, config-shape validated.
 
 ### The web driver, the Chromatic way
 
@@ -225,6 +227,7 @@ args = []                             # extra args appended for every job (drive
 env = []                              # KEY=VALUE env for every job
 timeout = 600                         # per-job seconds before the capture is killed
 parallel = 1                          # jobs run concurrently up to this many
+serial = false                        # true: every job runs exclusively (heavy engines)
 
 [driver.godot]                        # driver tables — decoded by each driver
 binary = ""                           # godot binary (else $OMNIVIZ_GODOT, then PATH)

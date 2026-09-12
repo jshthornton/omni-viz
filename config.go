@@ -44,6 +44,7 @@ type Defaults struct {
 	Env        []string `toml:"env"`
 	Timeout    int      `toml:"timeout"`
 	Parallel   int      `toml:"parallel"`
+	Serial     bool     `toml:"serial"` // run every job exclusively (heavy engines)
 }
 
 // ShotConfig is one [[shot]] entry. The canonical target key is `target`
@@ -326,7 +327,7 @@ func (c *Config) Jobs() []Job {
 		}
 		j.Timeout = time.Duration(timeout) * time.Second
 		j.QuitAfter = s.QuitAfter
-		j.Serial = s.Serial
+		j.Serial = c.Defaults.Serial || s.Serial
 		jobs = append(jobs, j)
 	}
 	return jobs

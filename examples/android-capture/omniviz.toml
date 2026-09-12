@@ -1,0 +1,48 @@
+# omniviz example (recipe) — Android via the command driver
+#
+# Each shot drives an emulator/device with adb: force-stop → pin animation
+# and night-mode settings → launch one screen (deeplink or launcher) →
+# settle → `screencap`. The PNG lands in $OMNIVIZ_OUTPUT, auto-collected.
+#
+# Requires: platform-tools (`adb`) on PATH and one booted emulator/device.
+# NOT engine-verified in this repo — the adb flow is standard and the config
+# shape is validated; you need a device to run it.
+baseline_dir = "baselines"
+output_dir = "tmp"
+
+[render]
+width = 1080
+height = 2400        # match your emulator's `wm size` — pin it in CI
+
+[defaults]
+driver = "command"
+record = false
+threshold = 0.1
+max_changed = 0.01
+timeout = 120
+
+[driver.command]
+command = ["./capture.sh", "--app=com.example.app"]
+
+[[shot]]
+name = "main"
+args = ["--screen=main"]
+
+[[shot]]
+name = "settings"
+args = ["--screen=settings"]        # app://settings deeplink
+
+[[shot]]
+name = "profile"
+args = ["--screen=profile"]
+
+# status bar noise: clock changes between runs — either run shots minutes
+# apart (baseline has a different time anyway → raise threshold for shots
+# with status bars), use `demo mode`…
+[[shot]]
+name = "status-bar-safe"
+args = ["--screen=main", "--settle=3"]
+
+# demo mode tip: `adb shell settings put global sysui_demo_allowed 1` then
+# `adb shell am broadcast -a com.android.systemui.demo -e command enter`
+# pins the clock/battery/icons — the professional fix for status-bar flake.

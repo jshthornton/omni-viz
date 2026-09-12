@@ -1,0 +1,38 @@
+# omniviz example (recipe) — Unity via the command driver
+#
+# Each shot launches the Unity editor in batchmode, opens one scene, renders
+# a fixed number of frames, saves a screenshot to $OMNIVIZ_OUTPUT and exits.
+# Requires a Unity project: put Assets/Editor/VisualTestCapture.cs and your
+# scenes under Assets/Scenes/ into a real Unity project at this directory,
+# then point unity-editor at it.
+baseline_dir = "baselines"
+output_dir = "tmp"
+
+[render]
+width = 1280
+height = 720
+
+[defaults]
+driver = "command"
+record = false
+threshold = 0.1
+max_changed = 0.01
+timeout = 900
+serial = true              # one editor instance at a time — batchmode editors are heavy
+
+[driver.command]
+# resolve the editor binary outside config: the wrapper script finds
+# $UNITY_EDITOR (or a default install path)
+command = ["./run-unity.sh"]
+
+[[shot]]
+name = "lobby"
+args = ["--scene=Lobby"]
+
+[[shot]]
+name = "gameplay-hud"
+args = ["--scene=GameplayHUD"]
+
+[[shot]]
+name = "inventory"
+args = ["--scene=Inventory"]

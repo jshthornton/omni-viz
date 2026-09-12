@@ -1,0 +1,45 @@
+# omniviz example (recipe) — Unreal Engine 5 via the command driver
+#
+# Each shot runs one test map in game mode; the map's level blueprint does
+# the capture glue: warm-up delay → `HighResShot` → `quit`. Screenshots land
+# under Saved/Screenshots/<Platform>/ and are collected by the paths glob.
+#
+# Put run-ue.sh next to your .uproject (or point UNREAL_EDITOR at your
+# engine build) and list one shot per test map.
+baseline_dir = "baselines"
+output_dir = "tmp"
+
+[render]
+width = 1280
+height = 720
+
+[defaults]
+driver = "command"
+record = false
+threshold = 0.1
+max_changed = 0.01
+timeout = 900
+serial = true              # UE wants the whole GPU; one map at a time
+
+[driver.command]
+command = ["./run-ue.sh"]
+
+[[shot]]
+name = "lobby"
+args = ["/Game/Tests/Lobby", "-deterministic", "-seed=1"]
+
+[[shot]]
+name = "landscape"
+args = ["/Game/Tests/Landscape", "-deterministic", "-seed=7"]
+
+[[shot]]
+name = "ui-flow"
+args = ["/Game/Tests/UIFlow", "-deterministic", "-seed=42"]
+
+# Screenshots are timestamped by the engine — the glob absorbs it. On
+# Windows the folder is Saved/Screenshots/WindowsEditor (editor binary) or
+# .../WindowsNoEditor (packaged game).
+[[shot]]
+name = "screenshots-map"
+args = ["/Game/Tests/Screenshots", "-deterministic"]
+paths = ["Saved/Screenshots/*/HighResShot*.png"]

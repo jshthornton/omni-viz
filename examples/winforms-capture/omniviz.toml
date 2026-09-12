@@ -1,0 +1,44 @@
+# omniviz example (recipe) — .NET WinForms via the command driver
+#
+# Each shot launches the WinForms app; it paints deterministically, captures
+# ITSELF with DrawToBitmap, saves to $OMNIVIZ_OUTPUT and exits. Swap the demo
+# form for your real screen: any Form/Control can DrawToBitmap itself.
+#
+# Windows only (WinForms). Requires the .NET 8 SDK. NOT engine-verified in
+# this repo — the capture glue is standard GDI+ and the config shape is
+# validated, but you need a Windows box to run it.
+baseline_dir = "baselines"
+output_dir = "tmp"
+
+[render]
+width = 656
+height = 439                     # window chrome incl.; the form is 640x400 client
+
+[defaults]
+driver = "command"
+record = false
+threshold = 0.1
+max_changed = 0.01
+timeout = 300
+
+[[shot]]
+name = "dashboard"
+driver_options = { command = ["dotnet", "run", "--project", "src", "--", "--set=dashboard", "--variant=clean"] }
+
+[[shot]]
+name = "reports"
+driver_options = { command = ["dotnet", "run", "--project", "src", "--", "--set=reports", "--variant=clean"] }
+
+# intentional failures — same variants as the cli-demo
+[[shot]]
+name = "drift"
+driver_options = { command = ["dotnet", "run", "--project", "src", "--", "--set=dashboard", "--variant=drift"] }
+
+[[shot]]
+name = "mismatch"
+driver_options = { command = ["dotnet", "run", "--project", "src", "--", "--set=dashboard", "--variant=broken"] }
+
+# tips:
+#   • freeze the machine: disable font smoothing/animation in CI users, or
+#     accept a slightly raised threshold — GDI+ text is environment-sensitive
+#   • take baselines on the same OS/theme as CI (DPI 100%: `<ApplicationHighDpiMode>PerMonitor</ApplicationHighDpiMode>`)
