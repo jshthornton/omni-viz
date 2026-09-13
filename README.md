@@ -223,6 +223,9 @@ driver = "godot"                      # driver for shots without one (default: c
 record = true                         # record scenarios by default
 threshold = 0.1                       # pixelmatch threshold 0..1 (smaller = more sensitive)
 max_changed = 0.01                    # max fraction of pixels that may differ at all
+max_diff_ratio = 0                    # tolerated fraction of pixels beyond the perceptual
+                                      # threshold (0 = strict; 0.01 tolerates ≤1% AA noise —
+                                      # the changed-area budget still catches real drift)
 args = []                             # extra args appended for every job (driver-dependent)
 env = []                              # KEY=VALUE env for every job
 timeout = 600                         # per-job seconds before the capture is killed

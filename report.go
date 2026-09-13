@@ -18,6 +18,7 @@ type ShotResult struct {
 	Status         string  `json:"status"`
 	Threshold      float64 `json:"threshold"`
 	MaxChanged     float64 `json:"max_changed"`
+	MaxDiffRatio   float64 `json:"max_diff_ratio,omitempty"`
 	Width          int     `json:"width"`
 	Height         int     `json:"height"`
 	MismatchPixels int     `json:"mismatch_pixels"`
@@ -111,7 +112,13 @@ func (c *RunContext) CompareShot(r *ShotResult) {
 	r.MismatchRatio = res.Ratio
 	r.ChangedPixels = res.ChangedPixels
 	r.ChangedRatio = res.ChangedRatio
+	// pass: no perceptual misses at all, or a tolerated small ratio of them
+	// (max_diff_ratio, default 0 = strict) — plus the changed-area budget
 	if res.DiffPixels == 0 && res.ChangedRatio <= r.MaxChanged {
+		r.Status = "pass"
+		return
+	}
+	if r.MaxDiffRatio > 0 && res.Ratio <= r.MaxDiffRatio && res.ChangedRatio <= r.MaxChanged {
 		r.Status = "pass"
 		return
 	}
@@ -132,6 +139,9 @@ func (c *RunContext) Rediff(shots []ShotResult) {
 		}
 		if shots[i].MaxChanged <= 0 {
 			shots[i].MaxChanged = c.Config.Defaults.MaxChanged
+		}
+		if shots[i].MaxDiffRatio <= 0 {
+			shots[i].MaxDiffRatio = c.Config.Defaults.MaxDiffRatio
 		}
 		c.CompareShot(&shots[i])
 	}

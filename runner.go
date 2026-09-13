@@ -123,18 +123,19 @@ func (c *RunContext) RunJob(job Job, opts RunOptions, slot int) []ShotResult {
 			logTail = TailFile(env.LogPath, 4096)
 		}
 		r := ShotResult{
-			Key:        key,
-			Job:        job.ID,
-			Target:     job.Target,
-			Status:     "captured",
-			Threshold:  job.Threshold,
-			MaxChanged: job.MaxChanged,
-			Width:      dims.X,
-			Height:     dims.Y,
-			Recording:  framesKept,
-			Frames:     frames,
-			DurationMs: duration.Milliseconds(),
-			Log:        logTail,
+			Key:          key,
+			Job:          job.ID,
+			Target:       job.Target,
+			Status:       "captured",
+			Threshold:    job.Threshold,
+			MaxChanged:   job.MaxChanged,
+			MaxDiffRatio: job.MaxDiffRatio,
+			Width:        dims.X,
+			Height:       dims.Y,
+			Recording:    framesKept,
+			Frames:       frames,
+			DurationMs:   duration.Milliseconds(),
+			Log:          logTail,
 		}
 		if opts.Compare {
 			c.CompareShot(&r)
@@ -152,16 +153,17 @@ func (c *RunContext) RunJob(job Job, opts RunOptions, slot int) []ShotResult {
 
 func jobErrorResult(job Job, msg string, record bool, frames int, durationMs int64) []ShotResult {
 	return []ShotResult{{
-		Key:        job.Key,
-		Job:        job.ID,
-		Target:     job.Target,
-		Status:     "error",
-		Error:      msg,
-		Threshold:  job.Threshold,
-		MaxChanged: job.MaxChanged,
-		Recording:  record,
-		Frames:     frames,
-		DurationMs: durationMs,
+		Key:          job.Key,
+		Job:          job.ID,
+		Target:       job.Target,
+		Status:       "error",
+		Error:        msg,
+		Threshold:    job.Threshold,
+		MaxChanged:   job.MaxChanged,
+		MaxDiffRatio: job.MaxDiffRatio,
+		Recording:    record,
+		Frames:       frames,
+		DurationMs:   durationMs,
 	}}
 }
 

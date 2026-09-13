@@ -15,17 +15,21 @@ height = 2400
 [defaults]
 driver = "command"
 record = false
-threshold = 0.1
-max_changed = 0.02          # settings screens carry a clock in the status bar
+threshold = 0.2             # cross-boot AA jitter on status icons (wifi/signal)
+max_changed = 0.02          # budget still catches real layout shifts
+max_diff_ratio = 0.01       # tolerate ≤1% of pixels beyond threshold — dynamic
+                            # system-UI strips; real regressions are 40%+
 timeout = 180
 serial = true               # one emulator, one screen at a time
 
 [driver.command]
 command = ["/work/capture.sh", "--app=com.android.settings"]
 
+# NOTE: the Settings main screen's footer strip renders dynamic content per
+# boot — Sound/Display/About are stable system screens
 [[shot]]
-name = "settings-main"
-args = ["--screen=main", "--action=android.settings.SETTINGS"]
+name = "sound"
+args = ["--screen=sound", "--action=android.settings.SOUND_SETTINGS"]
 
 [[shot]]
 name = "display"

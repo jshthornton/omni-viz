@@ -36,15 +36,16 @@ type RenderConfig struct {
 }
 
 type Defaults struct {
-	Driver     string   `toml:"driver"` // default driver for shots without one
-	Record     bool     `toml:"record"`
-	Threshold  float64  `toml:"threshold"`
-	MaxChanged float64  `toml:"max_changed"`
-	Args       []string `toml:"args"`
-	Env        []string `toml:"env"`
-	Timeout    int      `toml:"timeout"`
-	Parallel   int      `toml:"parallel"`
-	Serial     bool     `toml:"serial"` // run every job exclusively (heavy engines)
+	Driver       string   `toml:"driver"` // default driver for shots without one
+	Record       bool     `toml:"record"`
+	Threshold    float64  `toml:"threshold"`
+	MaxChanged   float64  `toml:"max_changed"`
+	MaxDiffRatio float64  `toml:"max_diff_ratio"` // tolerated fraction of pixels beyond threshold (0 = strict)
+	Args         []string `toml:"args"`
+	Env          []string `toml:"env"`
+	Timeout      int      `toml:"timeout"`
+	Parallel     int      `toml:"parallel"`
+	Serial       bool     `toml:"serial"` // run every job exclusively (heavy engines)
 }
 
 // ShotConfig is one [[shot]] entry. The canonical target key is `target`
@@ -58,18 +59,19 @@ type ShotConfig struct {
 	Driver        string         `toml:"driver"`
 	DriverOptions toml.Primitive `toml:"driver_options"`
 
-	Size       string   `toml:"size"`
-	Width      int      `toml:"width"`
-	Height     int      `toml:"height"`
-	Paths      []string `toml:"paths"`
-	Args       []string `toml:"args"`
-	Env        []string `toml:"env"`
-	Record     *bool    `toml:"record"`
-	Threshold  *float64 `toml:"threshold"`
-	MaxChanged *float64 `toml:"max_changed"`
-	QuitAfter  int      `toml:"quit_after"`
-	Timeout    int      `toml:"timeout"`
-	Serial     bool     `toml:"serial"`
+	Size         string   `toml:"size"`
+	Width        int      `toml:"width"`
+	Height       int      `toml:"height"`
+	Paths        []string `toml:"paths"`
+	Args         []string `toml:"args"`
+	Env          []string `toml:"env"`
+	Record       *bool    `toml:"record"`
+	Threshold    *float64 `toml:"threshold"`
+	MaxChanged   *float64 `toml:"max_changed"`
+	MaxDiffRatio *float64 `toml:"max_diff_ratio"`
+	QuitAfter    int      `toml:"quit_after"`
+	Timeout      int      `toml:"timeout"`
+	Serial       bool     `toml:"serial"`
 }
 
 // effectiveTarget returns target, falling back to the scene alias.
@@ -89,18 +91,19 @@ type Job struct {
 	Driver        string // resolved driver id
 	DriverOptions any    // merged [driver.<name>] + shot driver_options, nil if optionless
 
-	Target     string
-	Width      int
-	Height     int
-	Record     bool
-	Threshold  float64
-	MaxChanged float64
-	Args       []string
-	Env        []string
-	QuitAfter  int
-	Timeout    time.Duration
-	Paths      []string
-	Serial     bool
+	Target       string
+	Width        int
+	Height       int
+	Record       bool
+	Threshold    float64
+	MaxChanged   float64
+	MaxDiffRatio float64 // tolerated fraction of pixels beyond threshold (0 = strict)
+	Args         []string
+	Env          []string
+	QuitAfter    int
+	Timeout      time.Duration
+	Paths        []string
+	Serial       bool
 }
 
 func DefaultConfig() *Config {
@@ -320,6 +323,10 @@ func (c *Config) Jobs() []Job {
 		j.MaxChanged = c.Defaults.MaxChanged
 		if s.MaxChanged != nil {
 			j.MaxChanged = *s.MaxChanged
+		}
+		j.MaxDiffRatio = c.Defaults.MaxDiffRatio
+		if s.MaxDiffRatio != nil {
+			j.MaxDiffRatio = *s.MaxDiffRatio
 		}
 		timeout := c.Defaults.Timeout
 		if s.Timeout > 0 {

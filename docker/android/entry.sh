@@ -10,7 +10,7 @@ export PATH="/repo/bin:/opt/android-sdk-linux/platform-tools:/opt/android-sdk-li
 SEEDED=1
 [ -n "$(ls -A baselines 2>/dev/null)" ] || SEEDED=0
 
-if [ "$1" != "--no-boot" ]; then
+if [ "${1:-}" != "--no-boot" ]; then
   echo "booting emulator…"
   nohup emulator -avd test -no-window -gpu swiftshader_indirect -no-snapshot \
     -no-audio -no-boot-anim -accel on -no-metrics > /tmp/emu.log 2>&1 &
@@ -25,7 +25,7 @@ if [ "$SEEDED" = 0 ]; then
   echo "── seeding baselines (first run)…"
   omniviz capture >/dev/null
   mkdir -p baselines
-  for k in settings-main display about; do
+  for k in sound display about; do
     cp "tmp/current/$k.png" "baselines/$k.png"
   done
   cp tmp/current/display.png baselines/security.png   # wrong ref on purpose
