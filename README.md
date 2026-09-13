@@ -238,6 +238,7 @@ max_changed = 0.01                    # max fraction of pixels that may differ a
 max_diff_ratio = 0                    # tolerated fraction of pixels beyond the perceptual
                                       # threshold (0 = strict; 0.01 tolerates ≤1% AA noise —
                                       # the changed-area budget still catches real drift)
+retries = 0                           # re-run errored captures this many times (flaky engines)
 args = []                             # extra args appended for every job (driver-dependent)
 env = []                              # KEY=VALUE env for every job
 timeout = 600                         # per-job seconds before the capture is killed
@@ -252,6 +253,7 @@ display_driver = "x11"                # linux only
 browser = ""                          # else $OMNIVIZ_BROWSER, then auto-detect
 full_page = false
 wait_ms = 250                         # settle delay
+# selector = ".checkout-summary"      # capture one element instead of the page
 # wait_ready = "window.__app === 'ready'"
 # freeze = true · sandbox = true · headless = true
 
@@ -263,6 +265,10 @@ wait_ms = 250                         # settle delay
 name = "my-shot"                      # optional; omit for multi mode (file-stem-named shots)
 target = "res://scenes/whatever.tscn" # scene / URL / file path; command shots may omit
 size = "1280x720"                     # or width/height ints; falls back to [render]
+viewports = ["1280x720", "375x812"]   # responsive matrix: fans out to one job per size
+ignore_regions = [[0, 0, 1080, 90], [960, 40, 120, 40]]
+                                      # [x y w h] rects excluded from the diff entirely —
+                                      # clocks, ads, notification badges, any dynamic strip
 paths = ["tmp/shots/*.png"]           # optional glob collection; omit = driver's default source
 driver = "godot"                      # per-shot driver override
 driver_options = { wait_ms = 500 }    # per-shot driver options, merged over the global table
@@ -271,6 +277,7 @@ env = ["SPOOKY_SEED=1234"]
 record = true
 threshold = 0.05
 max_changed = 0.02
+retries = 1                           # re-run errored captures once (flaky devices/engines)
 quit_after = 240                      # godot: quit after N frames · web: recording frame count
 serial = true                         # heavy job: run exclusively (nothing else alongside)
 timeout = 900
@@ -290,6 +297,10 @@ all (above a small dither-noise floor). This is what catches *global* drift —
 a fog-density or exposure shift changes every pixel slightly, which a
 per-pixel threshold rightly tolerates but a visual regression suite must
 not. A shot fails if EITHER budget is exceeded.
+
+`ignore_regions` (per shot) excludes rectangles from the diff entirely —
+status-bar clocks, rotating ads, notification badges, anything that moves
+for reasons unrelated to your change. Excluded pixels can never fail a shot.
 
 A size change (different resolution) is its own `size` failure — you almost
 always want to notice that explicitly.
@@ -328,15 +339,48 @@ godot gives each job its own window (cascade-offset so they don't stack).
 `omniviz test` exits non-zero when any shot is `fail`, `size`, `error` or
 `missing`; `--fail-on-new` also fails on unapproved `new` shots. Every run
 writes `report.json` and `junit.xml` (GitLab test reports, GitHub test
-reporters) into `output_dir`, and `omniviz summary --markdown` renders the
-report for PR comments and `$GITHUB_STEP_SUMMARY`.
+reporter actions) into `output_dir`, and `omniviz summary --markdown`
+renders the report for PR comments and `$GITHUB_STEP_SUMMARY`.
 
 Baselines live in git, so a PR diffs against the base branch's baselines
-automatically — the branching story hosted tools build servers for. Full
-recipes (GitHub Actions incl. a composite action in
-[`.github/actions/omniviz`](.github/actions/omniviz), GitLab CI with junit
-reports, baseline seeding/acceptance flows, release binaries via
-GoReleaser): **[docs/ci.md](docs/ci.md)**.
+automatically — the branching story hosted tools build servers for. A pull
+request that drifts a shot goes red; approving the intentional change is a
+baseline commit in the same PR.
+
+Minimal GitHub Actions job:
+
+```yaml
+name: visual
+on: [pull_request, push]
+permissions:
+  contents: read
+  pull-requests: write        # PR comments
+jobs:
+  visual:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # browser targets need a Chrome (preinstalled on ubuntu-latest):
+      # [driver.web] browser = "chromium"  ·  godot needs a GPU runner
+      - uses: jshthornton/omni-viz/.github/actions/omniviz@main
+        with:
+          project: .
+          fail-on-new: ${{ github.event_name == 'pull_request' }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: omniviz-report
+          path: |
+            tmp/omniviz/report.json
+            tmp/omniviz/junit.xml
+            tmp/omniviz/current/
+            tmp/omniviz/diff/
+```
+
+The composite action installs the CLI, runs the tests, comments the report
+on the PR, appends it to the job summary and uploads the artifacts. Baseline
+seeding and auto-accept-on-main flows, GitLab CI with `reports:junit`, and
+release-binary installs are in **[docs/ci.md](docs/ci.md)**.
 
 ## AI agents
 
