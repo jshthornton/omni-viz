@@ -29,6 +29,8 @@ Usage:
   omniviz shots    [--project DIR]             list configured shots
   omniviz run      [--project DIR] [--driver NAME] TARGET [-- USER_ARGS...]
                                                launch one target adhoc (windowed; no diffing)
+  omniviz summary  [--project DIR] [--markdown] print the last report (markdown for
+                                               PR comments / $GITHUB_STEP_SUMMARY)
   omniviz drivers                              list registered drivers
   omniviz version
 
@@ -74,6 +76,8 @@ func run(args []string) int {
 		err = cmdShots(args[2:])
 	case "run":
 		err = cmdRun(args[2:])
+	case "summary":
+		err = cmdSummary(args[2:])
 	case "drivers":
 		for _, name := range omniviz.DriverNames() {
 			fmt.Println(name)

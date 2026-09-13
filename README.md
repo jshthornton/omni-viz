@@ -6,7 +6,7 @@ omniviz brings the webdev workflow (Chromatic, Percy, Playwright screenshots) to
 visual target: capture deterministically, pixel-diff against a committed baseline, and
 review diffs in a local UI where approving a change promotes it to the new baseline.
 
-One core, one workflow, and a **driver per target kind**:
+Three commands do the work:
 
 ```
 omniviz test     →  capture every shot, diff vs baselines, non-zero exit on regressions
@@ -17,16 +17,26 @@ omniviz approve  →  promote a changed image to the new baseline
 One static binary. No pip, no node, no runtime dependencies — the review UI is embedded
 (htmx 4).
 
-## The core insight
+## Why
 
-Nothing about visual regression testing is engine-specific. Capture → diff → review →
-approve is the same loop whether the pixels come from Godot, a browser, Unity in
-batchmode, or a .NET form. omniviz splits that loop in two:
+Web developers have had visual regression testing for years. Chromatic, Percy, Playwright
+screenshots: change the UI, the tool diffs it against a committed baseline, you review
+what moved, approve the intentional changes. It catches the stuff unit tests never see —
+and it's routine.
 
-- **the core** (this repo's root package): config, job scheduling, the pixelmatch-grade
-  diff, baselines, approvals, report, the review UI
-- **drivers** (`drivers/`): the only engine-aware code — how to launch the thing and get
-  PNGs out of it
+Everything outside the browser has nothing comparable. Godot has GUT and gdUnit4 for
+game logic, but no answer for a fog density change that quietly shifts every scene.
+Unity, Unreal, .NET apps, terminals: same gap. The moment your UI isn't a web page
+you're back to eyeballing screenshots and hoping you'd notice.
+
+omniviz started as gdviz, a visual regression tool for Godot. It worked, and it quickly
+turned out the Godot part was the smallest piece: launch the engine, get PNGs out.
+Everything that made the tool worth running — the perceptual diff, the changed-area
+budget, baselines, approvals, the review UI — never touched Godot at all. So the
+engine-specific bit became a driver, and the rest became this project.
+
+That's the whole split. The core (config, scheduling, diff, baselines, report, review
+UI) doesn't know what a Godot or a Chrome is:
 
 ```
 ┌────────────────────────────────────────────────────────┐
@@ -43,8 +53,17 @@ batchmode, or a .NET form. omniviz splits that loop in two:
          scenes         anything)
 ```
 
-Shots mix drivers freely in one `omniviz.toml` — test your game menu (godot) and your
-companion website (web) in the same run, same report, same review UI.
+A driver is just how a target plugs in: how it's launched and where the images come
+from. Most engines don't need native code at all — the command driver runs any process
+and collects the PNGs, which covers Unity batchmode, Unreal commandlets, .NET forms,
+Delphi apps and Android with a few lines of config. Web gets its own driver because
+browser capture is its own craft. Shots can mix drivers in one `omniviz.toml` and land
+in one report — game menus and the companion website reviewed side by side.
+
+Games and apps are visual: layout regressions, material drift, generation changes and
+authored-scene mistakes are invisible to `assert_eq`. omniviz makes every screenshot a
+reviewable, committed artifact — intended changes get approved and become the new
+reference, unintended ones fail the run with a pixel heatmap of exactly what moved.
 
 ## Drivers
 
@@ -94,13 +113,6 @@ cd examples/cli-demo
 
 See also [`examples/godot-minimal`](examples/godot-minimal) (needs godot + GPU) and
 [`examples/web-demo`](examples/web-demo) (needs any Chrome-family browser).
-
-## Why
-
-Games and apps are visual: layout regressions, material drift, generation changes and
-authored-scene mistakes are invisible to `assert_eq`. omniviz makes every screenshot a
-reviewable, committed artifact — intended changes get approved and become the new
-reference, unintended ones fail the run with a pixel heatmap of exactly what moved.
 
 ## Install
 
@@ -311,11 +323,27 @@ godot gives each job its own window (cascade-offset so they don't stack).
 - For UI shots beware animated clocks/blinking cursors — the web driver
   freezes them for you; elsewhere, mask them or raise the threshold.
 
-## CI
+## CI/CD
 
 `omniviz test` exits non-zero when any shot is `fail`, `size`, `error` or
-`missing`; `--fail-on-new` also fails on unapproved `new` shots. The report
-lands in `output_dir/report.json`, and `omniviz review` serves it for triage.
+`missing`; `--fail-on-new` also fails on unapproved `new` shots. Every run
+writes `report.json` and `junit.xml` (GitLab test reports, GitHub test
+reporters) into `output_dir`, and `omniviz summary --markdown` renders the
+report for PR comments and `$GITHUB_STEP_SUMMARY`.
+
+Baselines live in git, so a PR diffs against the base branch's baselines
+automatically — the branching story hosted tools build servers for. Full
+recipes (GitHub Actions incl. a composite action in
+[`.github/actions/omniviz`](.github/actions/omniviz), GitLab CI with junit
+reports, baseline seeding/acceptance flows, release binaries via
+GoReleaser): **[docs/ci.md](docs/ci.md)**.
+
+## AI agents
+
+An importable skill teaches coding agents the tool inside and out — commands,
+config schema, per-engine capture recipes, determinism troubleshooting:
+[`skill/omniviz/SKILL.md`](skill/omniviz/SKILL.md). Import instructions for
+pi / Claude Code / AGENTS.md in [`skill/README.md`](skill/README.md).
 
 ## Status
 

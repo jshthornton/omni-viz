@@ -127,6 +127,9 @@ func runTest(argv []string, mode string, compare bool) error {
 	if err := omniviz.SaveReport(filepath.Join(c.Output, "report.json"), report); err != nil {
 		return err
 	}
+	if err := omniviz.WriteJUnit(filepath.Join(c.Output, "junit.xml"), report); err != nil {
+		fmt.Fprintf(os.Stderr, "omniviz: warning: junit: %v\n", err)
+	}
 	omniviz.PrintSummary(report)
 	return omniviz.ExitError(report, *failOnNew)
 }
@@ -166,6 +169,7 @@ func cmdCompare(argv []string) error {
 	if err := omniviz.SaveReport(filepath.Join(c.Output, "report.json"), report); err != nil {
 		return err
 	}
+	omniviz.WriteJUnit(filepath.Join(c.Output, "junit.xml"), report)
 	omniviz.PrintSummary(report)
 	return omniviz.ExitError(report, false)
 }

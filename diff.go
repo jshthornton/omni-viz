@@ -43,8 +43,10 @@ var (
 
 // ComparePNG diffs two PNG files and produces a diff visualization.
 // threshold follows pixelmatch semantics (0..1, default 0.1; smaller is more
-// sensitive). The caller applies the changed-area budget to res.ChangedRatio.
-func ComparePNG(pathA, pathB string, threshold float64) (DiffResult, *image.RGBA, error) {
+// sensitive). Optional ignore regions are excluded from the diff entirely
+// (clocks, ads, any dynamic strip). The caller applies the changed-area
+// budget to res.ChangedRatio.
+func ComparePNG(pathA, pathB string, threshold float64, ignore ...image.Rectangle) (DiffResult, *image.RGBA, error) {
 	a, err := LoadRGBA(pathA)
 	if err != nil {
 		return DiffResult{}, nil, fmt.Errorf("baseline: %w", err)
@@ -63,7 +65,7 @@ func ComparePNG(pathA, pathB string, threshold float64) (DiffResult, *image.RGBA
 		res.SizeMismatch = true
 		return res, nil, nil
 	}
-	diffImg, diffCount, changedCount := diffRGBA(a, b, threshold)
+	diffImg, diffCount, changedCount := diffRGBA(a, b, threshold, ignore)
 	res.Width = res.BaseWidth
 	res.Height = res.BaseHeight
 	res.TotalPixels = res.Width * res.Height
@@ -225,7 +227,7 @@ func brightnessDelta(img []uint8, m int, r1, g1, b1, a1 uint8) float64 {
 
 // ---------------------------------------------------------------- diff -----
 
-func diffRGBA(a, b *image.RGBA, threshold float64) (*image.RGBA, int, int) {
+func diffRGBA(a, b *image.RGBA, threshold float64, ignore []image.Rectangle) (*image.RGBA, int, int) {
 	w := a.Bounds().Dx()
 	h := a.Bounds().Dy()
 	maxDelta := threshold
@@ -238,6 +240,16 @@ func diffRGBA(a, b *image.RGBA, threshold float64) (*image.RGBA, int, int) {
 	for y := 0; y < h; y++ {
 		for x := 0; x < w; x++ {
 			pos := (y*w + x) * 4
+			if inRegions(ignore, x, y) {
+				// excluded: dim like unchanged, never counted
+				luma := float64(ab[pos])*0.29889531 + float64(ab[pos+1])*0.58662247 + float64(ab[pos+2])*0.11448223
+				val := uint8(255 + (luma-255)*dimAlpha*float64(ab[pos+3])/255)
+				ob[pos] = val
+				ob[pos+1] = val
+				ob[pos+2] = val
+				ob[pos+3] = 255
+				continue
+			}
 			delta := 0
 			if !pixelsEqual(ab, bb, pos) {
 				delta = colorDelta(ab, bb, pos, pos, true, maxDelta)
@@ -273,6 +285,16 @@ func diffRGBA(a, b *image.RGBA, threshold float64) (*image.RGBA, int, int) {
 
 func pixelsEqual(a, b []uint8, pos int) bool {
 	return a[pos] == b[pos] && a[pos+1] == b[pos+1] && a[pos+2] == b[pos+2] && a[pos+3] == b[pos+3]
+}
+
+// inRegions reports whether (x, y) falls inside any ignore region.
+func inRegions(regions []image.Rectangle, x, y int) bool {
+	for _, r := range regions {
+		if x >= r.Min.X && x < r.Max.X && y >= r.Min.Y && y < r.Max.Y {
+			return true
+		}
+	}
+	return false
 }
 
 // changedPixel reports whether the pixel differs at all above the noise

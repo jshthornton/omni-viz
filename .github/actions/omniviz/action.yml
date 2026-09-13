@@ -1,0 +1,81 @@
+name: omniviz
+description: >
+  Run omniviz visual regression tests in a workflow: install the CLI, run
+  test/capture, publish a PR/step summary, upload artifacts, and exit with
+  the test result.
+
+inputs:
+  project:
+    description: Project root containing omniviz.toml
+    default: "."
+  command:
+    description: omniviz command to run (test or capture)
+    default: test
+  fail-on-new:
+    description: Treat unapproved new shots as failures (recommended for PRs)
+    default: "false"
+  output-dir:
+    description: output_dir from omniviz.toml (uploaded as artifact)
+    default: tmp/omniviz
+  comment:
+    description: Append the markdown summary to $GITHUB_STEP_SUMMARY and comment on the PR
+    default: "true"
+  go-version:
+    description: Go toolchain version used to install the CLI
+    default: stable
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-go@v5
+      with:
+        go-version: ${{ inputs.go-version }}
+
+    - name: Install omniviz
+      shell: bash
+      run: go install github.com/jshthornton/omni-viz/cmd/omniviz@${{ github.action_ref || 'main' }}
+
+    - name: omniviz ${{ inputs.command }}
+      id: test
+      shell: bash
+      continue-on-error: true
+      run: |
+        args=(--project "${{ inputs.project }}")
+        if [ "${{ inputs.fail-on-new }}" = "true" ]; then
+          args+=(--fail-on-new)
+        fi
+        omniviz ${{ inputs.command }} "${args[@]}"
+        echo "rc=$?" >> "$GITHUB_OUTPUT"
+
+    - name: Job summary
+      if: inputs.comment == 'true'
+      shell: bash
+      run: omniviz summary --project "${{ inputs.project }}" --markdown >> "$GITHUB_STEP_SUMMARY"
+
+    - name: Comment on PR
+      if: inputs.comment == 'true' && github.event_name == 'pull_request'
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        omniviz summary --project "${{ inputs.project }}" --markdown > /tmp/omniviz-comment.md
+        gh pr comment "${{ github.event.pull_request.number }}" --body-file /tmp/omniviz-comment.md
+
+    - name: Upload report artifacts
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: omniviz-report
+        path: |
+          ${{ inputs.output-dir }}/report.json
+          ${{ inputs.output-dir }}/junit.xml
+          ${{ inputs.output-dir }}/current/
+          ${{ inputs.output-dir }}/diff/
+          ${{ inputs.output-dir }}/logs/
+        if-no-files-found: ignore
+
+    - name: Result
+      shell: bash
+      run: |
+        echo "omniviz ${{ inputs.command }} rc=${{ steps.test.outputs.rc }}"
+        exit ${{ steps.test.outputs.rc }}

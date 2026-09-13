@@ -223,3 +223,59 @@ func TestCompareNoiseFloorIgnoresDither(t *testing.T) {
 		t.Fatalf("+2 shift should be inside the noise floor, got %d changed pixels", res.ChangedPixels)
 	}
 }
+
+func TestIgnoreRegions(t *testing.T) {
+	dir := t.TempDir()
+	a := makePNG(t, dir, "a.png", 64, 64, color.RGBA{R: 128, G: 128, B: 128, A: 255}, nil)
+	// b differs wildly in a 16x16 block at (32,32) and slightly elsewhere
+	b := makePNG(t, dir, "b.png", 64, 64, color.RGBA{R: 128, G: 128, B: 128, A: 255}, func(x, y int) (color.RGBA, bool) {
+		if x >= 32 && x < 48 && y >= 32 && y < 48 {
+			return color.RGBA{B: 255, A: 255}, true
+		}
+		if x == 0 && y == 0 {
+			return color.RGBA{R: 136, G: 136, B: 136, A: 255}, true
+		}
+		return color.RGBA{}, false
+	})
+
+	// unmasked: the block registers
+	res, _, err := ComparePNG(a, b, 0.1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.DiffPixels == 0 || res.ChangedPixels == 0 {
+		t.Fatalf("expected diffs without regions, got %+v", res)
+	}
+
+	// masked: block excluded, but the stray changed pixel still counts
+	res, _, err = ComparePNG(a, b, 0.1, image.Rect(32, 32, 48, 48))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.DiffPixels != 0 {
+		t.Fatalf("masked block still counted: %d diff pixels", res.DiffPixels)
+	}
+	if res.ChangedPixels == 0 {
+		t.Fatal("expected the unmasked changed pixel to still count")
+	}
+
+	// fully masked: nothing counts
+	res, _, _ = ComparePNG(a, b, 0.1, image.Rect(0, 0, 64, 64))
+	if res.DiffPixels != 0 || res.ChangedPixels != 0 {
+		t.Fatalf("full mask should zero both counters, got %+v", res)
+	}
+}
+
+func TestParseRects(t *testing.T) {
+	if _, err := parseRects(nil); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := parseRects([][]int{{10, 20, 30, 40}}); err != nil {
+		t.Fatal(err)
+	}
+	for _, bad := range [][][]int{{{1, 2, 3}}, {{1, 2, 3, 4, 5}}, {{0, 0, 0, 10}}, {{0, 0, 10, -1}}} {
+		if _, err := parseRects(bad); err == nil {
+			t.Errorf("parseRects(%v) should fail", bad)
+		}
+	}
+}

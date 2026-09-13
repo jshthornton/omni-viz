@@ -67,6 +67,9 @@ type Options struct {
 	// WaitReady is a JS expression polled until truthy before the shot
 	// (e.g. "window.__chartsRendered === true").
 	WaitReady string `toml:"wait_ready"`
+	// Selector captures a single element (CSS selector) instead of the
+	// page — component-level shots the way Chromatic stories work.
+	Selector string `toml:"selector"`
 	// Freeze disables animation/caret freezing for flaky-by-design pages.
 	// Default freezes (recommended).
 	Freeze *bool `toml:"freeze"`
@@ -211,9 +214,12 @@ func (d *Driver) Capture(ctx context.Context, rc *omniviz.RunContext, job omnivi
 			actions = append(actions, chromedp.Poll(opts.WaitReady, &ready))
 		}
 		actions = append(actions, chromedp.Sleep(time.Duration(waitMS)*time.Millisecond))
-		if opts.FullPage {
+		switch {
+		case opts.Selector != "":
+			actions = append(actions, chromedp.Screenshot(opts.Selector, &buf, chromedp.NodeVisible))
+		case opts.FullPage:
 			actions = append(actions, chromedp.FullScreenshot(&buf, 100))
-		} else {
+		default:
 			actions = append(actions, chromedp.CaptureScreenshot(&buf))
 		}
 		if err := chromedp.Run(runCtx, actions...); err != nil {

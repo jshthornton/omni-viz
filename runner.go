@@ -65,8 +65,30 @@ func (c *RunContext) RunJob(job Job, opts RunOptions, slot int) []ShotResult {
 		SetOverrides: opts.Set,
 	}
 
+	// Capture with retries: transient engine failures are common (device
+	// offline, GPU hiccup, browser crash). Only errored captures retry — a
+	// capture that produced images is diffed as-is.
 	start := time.Now()
-	res, capErr := drv.Capture(context.Background(), c, job, env)
+	var res CaptureResult
+	var capErr error
+	for attempt := 0; ; attempt++ {
+		if attempt > 0 {
+			fmt.Printf("[%s] attempt %d/%d after error: %v\n", job.ID, attempt+1, job.Retries+1, capErr)
+			os.RemoveAll(framesDir)
+			if record {
+				os.MkdirAll(framesDir, 0o755)
+			}
+			os.RemoveAll(scratchDir)
+			os.MkdirAll(scratchDir, 0o755)
+		}
+		res, capErr = drv.Capture(context.Background(), c, job, env)
+		if capErr == nil && res.Error == "" {
+			break
+		}
+		if attempt >= job.Retries {
+			break
+		}
+	}
 	duration := time.Since(start)
 	if capErr != nil {
 		return jobErrorResult(job, capErr.Error(), framesKept, 0, duration.Milliseconds())

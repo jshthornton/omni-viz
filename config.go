@@ -2,6 +2,7 @@ package omniviz
 
 import (
 	"fmt"
+	"image"
 	"os"
 	"path"
 	"path/filepath"
@@ -41,6 +42,7 @@ type Defaults struct {
 	Threshold    float64  `toml:"threshold"`
 	MaxChanged   float64  `toml:"max_changed"`
 	MaxDiffRatio float64  `toml:"max_diff_ratio"` // tolerated fraction of pixels beyond threshold (0 = strict)
+	Retries      int      `toml:"retries"`        // re-run errored captures this many times
 	Args         []string `toml:"args"`
 	Env          []string `toml:"env"`
 	Timeout      int      `toml:"timeout"`
@@ -59,19 +61,22 @@ type ShotConfig struct {
 	Driver        string         `toml:"driver"`
 	DriverOptions toml.Primitive `toml:"driver_options"`
 
-	Size         string   `toml:"size"`
-	Width        int      `toml:"width"`
-	Height       int      `toml:"height"`
-	Paths        []string `toml:"paths"`
-	Args         []string `toml:"args"`
-	Env          []string `toml:"env"`
-	Record       *bool    `toml:"record"`
-	Threshold    *float64 `toml:"threshold"`
-	MaxChanged   *float64 `toml:"max_changed"`
-	MaxDiffRatio *float64 `toml:"max_diff_ratio"`
-	QuitAfter    int      `toml:"quit_after"`
-	Timeout      int      `toml:"timeout"`
-	Serial       bool     `toml:"serial"`
+	Size          string   `toml:"size"`
+	Width         int      `toml:"width"`
+	Height        int      `toml:"height"`
+	Paths         []string `toml:"paths"`
+	Args          []string `toml:"args"`
+	Env           []string `toml:"env"`
+	Record        *bool    `toml:"record"`
+	Threshold     *float64 `toml:"threshold"`
+	MaxChanged    *float64 `toml:"max_changed"`
+	MaxDiffRatio  *float64 `toml:"max_diff_ratio"`
+	IgnoreRegions [][]int  `toml:"ignore_regions"` // [x y w h] rects excluded from the diff
+	Viewports     []string `toml:"viewports"`      // "1280x720" list — shot fans out to one job each
+	Retries       int      `toml:"retries"`
+	QuitAfter     int      `toml:"quit_after"`
+	Timeout       int      `toml:"timeout"`
+	Serial        bool     `toml:"serial"`
 }
 
 // effectiveTarget returns target, falling back to the scene alias.
@@ -91,19 +96,21 @@ type Job struct {
 	Driver        string // resolved driver id
 	DriverOptions any    // merged [driver.<name>] + shot driver_options, nil if optionless
 
-	Target       string
-	Width        int
-	Height       int
-	Record       bool
-	Threshold    float64
-	MaxChanged   float64
-	MaxDiffRatio float64 // tolerated fraction of pixels beyond threshold (0 = strict)
-	Args         []string
-	Env          []string
-	QuitAfter    int
-	Timeout      time.Duration
-	Paths        []string
-	Serial       bool
+	Target        string
+	Width         int
+	Height        int
+	Record        bool
+	Threshold     float64
+	MaxChanged    float64
+	MaxDiffRatio  float64           // tolerated fraction of pixels beyond threshold (0 = strict)
+	IgnoreRegions []image.Rectangle // excluded from the diff entirely
+	Retries       int
+	Args          []string
+	Env           []string
+	QuitAfter     int
+	Timeout       time.Duration
+	Paths         []string
+	Serial        bool
 }
 
 func DefaultConfig() *Config {
@@ -184,6 +191,14 @@ func (c *Config) validate() error {
 		}
 		if _, err := GetDriver(name); err != nil {
 			return fmt.Errorf("shot %d: %w", i+1, err)
+		}
+		if _, err := parseRects(s.IgnoreRegions); err != nil {
+			return fmt.Errorf("shot %d: %w", i+1, err)
+		}
+		for _, vp := range s.Viewports {
+			if _, _, err := parseSize(vp); err != nil {
+				return fmt.Errorf("shot %d: viewports: %w", i+1, err)
+			}
 		}
 		if s.Name == "" {
 			continue
@@ -335,9 +350,56 @@ func (c *Config) Jobs() []Job {
 		j.Timeout = time.Duration(timeout) * time.Second
 		j.QuitAfter = s.QuitAfter
 		j.Serial = c.Defaults.Serial || s.Serial
-		jobs = append(jobs, j)
+		j.Retries = c.Defaults.Retries
+		if s.Retries > 0 {
+			j.Retries = s.Retries
+		}
+		if len(s.IgnoreRegions) > 0 {
+			j.IgnoreRegions, _ = parseRects(s.IgnoreRegions) // validated above
+		}
+		if len(s.Viewports) == 0 {
+			jobs = append(jobs, j)
+			continue
+		}
+		// viewport matrix: one job per size, id/key suffixed with the size
+		seenVP := map[string]bool{}
+		for _, vp := range s.Viewports {
+			if seenVP[vp] {
+				continue
+			}
+			seenVP[vp] = true
+			w, h, err := parseSize(vp)
+			if err != nil {
+				continue // validated earlier
+			}
+			vj := j
+			vj.Width, vj.Height = w, h
+			vj.ID = j.ID + "-" + vp
+			if j.Key != "" {
+				vj.Key = j.Key + "-" + vp
+			}
+			jobs = append(jobs, vj)
+		}
 	}
 	return jobs
+}
+
+// parseRects converts [x y w h] rows to rectangles.
+func parseRects(raw [][]int) ([]image.Rectangle, error) {
+	if len(raw) == 0 {
+		return nil, nil
+	}
+	out := make([]image.Rectangle, 0, len(raw))
+	for i, r := range raw {
+		if len(r) != 4 {
+			return nil, fmt.Errorf("ignore_regions[%d]: want [x y w h]", i)
+		}
+		if r[2] <= 0 || r[3] <= 0 {
+			return nil, fmt.Errorf("ignore_regions[%d]: width/height must be positive", i)
+		}
+		out = append(out, image.Rect(r[0], r[1], r[0]+r[2], r[1]+r[3]))
+	}
+	return out, nil
 }
 
 // multiLabel derives a job label from a paths glob: the literal directory

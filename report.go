@@ -3,6 +3,7 @@ package omniviz
 import (
 	"encoding/json"
 	"fmt"
+	"image"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -31,6 +32,8 @@ type ShotResult struct {
 	BaselineExists bool    `json:"baseline_exists"`
 	Error          string  `json:"error,omitempty"`
 	Log            string  `json:"log,omitempty"`
+
+	ignore []image.Rectangle `json:"-"` // set by the runner, applied by CompareShot
 }
 
 type Report struct {
@@ -97,7 +100,7 @@ func (c *RunContext) CompareShot(r *ShotResult) {
 		return
 	}
 	r.BaselineExists = true
-	res, diffImg, err := ComparePNG(base, cur, r.Threshold)
+	res, diffImg, err := ComparePNG(base, cur, r.Threshold, r.ignore...)
 	if err != nil {
 		r.Status = "error"
 		r.Error = err.Error()
@@ -131,8 +134,15 @@ func (c *RunContext) CompareShot(r *ShotResult) {
 }
 
 // Rediff normalizes settings from an older report and re-compares every
-// shot (the `compare` command).
+// shot (the `compare` command). Ignore regions come from the current config,
+// matched by shot key.
 func (c *RunContext) Rediff(shots []ShotResult) {
+	regions := map[string][]image.Rectangle{}
+	for _, job := range c.Config.Jobs() {
+		if job.Key != "" {
+			regions[job.Key] = job.IgnoreRegions
+		}
+	}
 	for i := range shots {
 		if shots[i].Threshold <= 0 {
 			shots[i].Threshold = c.Config.Defaults.Threshold
@@ -143,6 +153,7 @@ func (c *RunContext) Rediff(shots []ShotResult) {
 		if shots[i].MaxDiffRatio <= 0 {
 			shots[i].MaxDiffRatio = c.Config.Defaults.MaxDiffRatio
 		}
+		shots[i].ignore = regions[shots[i].Key]
 		c.CompareShot(&shots[i])
 	}
 }

@@ -1,0 +1,41 @@
+# Release automation: tag a version (git tag v0.2.0 && git push --tags) and
+# GoReleaser publishes binaries + checksums on the GitHub release — CI jobs
+# then install omniviz by downloading a tarball instead of compiling Go.
+version: 2
+
+project_name: omniviz
+
+builds:
+  - id: omniviz
+    main: ./cmd/omniviz
+    binary: omniviz
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w -X main.version={{.Version}}
+
+archives:
+  - id: default
+    formats: [tar.gz]
+    name_template: >-
+      {{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+
+checksum:
+  name_template: checksums.txt
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
