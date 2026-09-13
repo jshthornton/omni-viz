@@ -273,7 +273,7 @@ paths = ["tmp/shots/*.png"]           # optional glob collection; omit = driver'
 driver = "godot"                      # per-shot driver override
 driver_options = { wait_ms = 500 }    # per-shot driver options, merged over the global table
 args = ["--level=2"]                  # extra args for this job only
-env = ["SPOOKY_SEED=1234"]
+env = ["SEED=1234"]
 record = true
 threshold = 0.05
 max_changed = 0.02
