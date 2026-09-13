@@ -1,0 +1,26 @@
+# Delphi capture verification — Lazarus/LCL is the free, cross-platform
+# sibling of Delphi VCL: same object Pascal, same TForm.GetFormImage capture
+# primitive. Verifying the capture contract under LCL in a container needs
+# no Embarcadero license. The Delphi-specific .dpr in
+# examples/delphi-capture keeps the VCL vocabulary (TPNGImage etc.) for
+# real Delphi shops; this LCL port is the runnable proof.
+#
+# NOTE: lcl-gtk2 is the precompiled widgetset — without it lazbuild tries to
+# rebuild LCLBase from source, which trips over Debian/Ubuntu packaging gaps
+# (fasthtmlparser). Keep it explicit; --no-install-recommends skips it.
+FROM docker.io/ubuntu:24.04
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        lazarus lcl-gtk2 fp-units-fcl fpc-source xvfb xauth \
+    && rm -rf /var/lib/apt/lists/*
+
+# Debian/Ubuntu ship fasthtmlparser (required by LCL's Clipbrd) only as FPC
+# source in the chm package — no compiled unit. Build it into the unit path.
+RUN SRC=$(find /usr/share/fpcsrc -name fasthtmlparser.pas | head -1) && \
+    mkdir -p /usr/local/lib/fpc/extra && \
+    fpc -FE/usr/local/lib/fpc/extra "$SRC" >/dev/null && \
+    echo '-Fu/usr/local/lib/fpc/extra' >> /etc/fpc.cfg
+
+WORKDIR /work
+COPY VisualTest.lpr VisualTest.lpi /work/
+RUN lazbuild VisualTest.lpi

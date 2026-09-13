@@ -40,8 +40,13 @@ internal static class Program
 
     private static string GetArg(string[] args, string name, string fallback)
     {
-        int i = Array.IndexOf(args, name);
-        return i >= 0 && i + 1 < args.Length ? args[i + 1] : fallback;
+        // accept both "--variant clean" and "--variant=clean"
+        for (int i = 0; i < args.Length; i++)
+        {
+            if (args[i] == name && i + 1 < args.Length) return args[i + 1];
+            if (args[i].StartsWith(name + "=")) return args[i].Substring(name.Length + 1);
+        }
+        return fallback;
     }
 }
 

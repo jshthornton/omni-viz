@@ -10,9 +10,9 @@ something to show immediately. Baselines are committed; `tmp/` is not.
 | [`web-demo`](web-demo) | `web` | warm Chrome, tab per shot, animations frozen | ✅ engine-verified |
 | [`unity-capture`](unity-capture) | `command` | `unity-editor -batchmode -executeMethod`, `ScreenCapture.CaptureScreenshot` | 📋 recipe |
 | [`unreal-capture`](unreal-capture) | `command` | test maps + `HighResShot` console command + `quit` | 📋 recipe |
-| [`winforms-capture`](winforms-capture) | `command` | GDI+ paint + `DrawToBitmap` (Windows, .NET 8) | 📋 recipe |
-| [`delphi-capture`](delphi-capture) | `command` | VCL paint + `GetFormImage` → `TPNGImage` (Delphi 11+; LCL note) | 📋 recipe |
-| [`android-capture`](android-capture) | `command` | adb: force-stop → launch screen → `screencap` | 📋 recipe |
+| [`winforms-capture`](winforms-capture) | `command` | GDI+ paint + `DrawToBitmap` (Windows, .NET 8) — verified via Mono in a container ([`docker/winforms`](../docker)) | ✅ container-verified |
+| [`delphi-capture`](delphi-capture) | `command` | VCL paint + `GetFormImage` → `TPNGImage` (Delphi 11+) — verified via Lazarus/LCL in a container ([`docker/delphi`](../docker)) | ✅ container-verified |
+| [`android-capture`](android-capture) | `command` | adb: force-stop → launch screen → `screencap` — verified against a real emulator ([`docker/android`](../docker)) | ✅ container-verified |
 
 ✅ = captured, diffed, reviewed and approved end-to-end in CI of this repo.
 📋 = config shape validated (`omniviz shots`); the capture glue is the

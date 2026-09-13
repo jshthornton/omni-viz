@@ -1,0 +1,25 @@
+# Android capture verification — boots a real emulator (with KVM when
+# available) and captures the system Settings app: a system screen is the
+# only capture target that needs no APK build. Your own app works the same
+# way (see examples/android-capture).
+#
+# Image basis: mobiledevops/android-sdk-image ships the SDK + emulator +
+# system images; KVM passthrough makes boots take ~1 minute instead of ~15.
+FROM docker.io/mobiledevops/android-sdk-image:latest
+
+# build-time HOME is /root — pin the AVD home for runtime
+ENV ANDROID_AVD_HOME=/root/.android/avd
+
+RUN yes | sdkmanager --sdk_root=$ANDROID_HOME --licenses >/dev/null 2>&1 || true
+RUN sdkmanager --sdk_root=$ANDROID_HOME "platform-tools" "emulator" "system-images;android-34;google_apis;x86_64" >/dev/null
+
+# AVD: a small deterministic profile — no camera, no snapshot, portrait 1080x2400
+RUN echo no | avdmanager create avd -n test -k "system-images;android-34;google_apis;x86_64" \
+      -d pixel_6 --force && \
+    printf 'hw.lcd.width=1080\nhw.lcd.height=2400\nhw.lcd.density=440\nhw.ramSize=3072\nhw.keyboard=yes\ndisk.dataPartition.size=4G\nhw.camera.back=none\nhw.camera.front=none\n' >> /root/.android/avd/test.avd/config.ini && \
+    sed -i 's|^image.sysdir.1=android-sdk-linux/|image.sysdir.1=|' /root/.android/avd/test.avd/config.ini
+
+# the omniviz binary + this repo are bind-mounted at /repo by verify.sh;
+# capture.sh is copied so shots can reference it directly
+COPY capture.sh /work/capture.sh
+RUN chmod +x /work/capture.sh

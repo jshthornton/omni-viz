@@ -1,0 +1,33 @@
+# omniviz (container) — WinForms via Mono. The .NET 8 sibling lives in
+# examples/winforms-capture; this project verifies the capture pattern
+# on Linux inside a container (see docker/README.md).
+baseline_dir = "baselines"
+output_dir = "tmp"
+
+[render]
+width = 656
+height = 439
+
+[defaults]
+driver = "command"
+record = false
+threshold = 0.1
+max_changed = 0.01
+timeout = 120
+
+[[shot]]
+name = "dashboard"
+driver_options = { command = ["xvfb-run", "-a", "-s", "-screen 0 800x600x24", "mono", "/work/CaptureApp.exe", "--set=dashboard", "--variant=clean"] }
+
+[[shot]]
+name = "reports"
+driver_options = { command = ["xvfb-run", "-a", "-s", "-screen 0 800x600x24", "mono", "/work/CaptureApp.exe", "--set=reports", "--variant=clean"] }
+
+# intentional failures — same variants as every omniviz example
+[[shot]]
+name = "drift"
+driver_options = { command = ["xvfb-run", "-a", "-s", "-screen 0 800x600x24", "mono", "/work/CaptureApp.exe", "--set=dashboard", "--variant=drift"] }
+
+[[shot]]
+name = "mismatch"
+driver_options = { command = ["xvfb-run", "-a", "-s", "-screen 0 800x600x24", "mono", "/work/CaptureApp.exe", "--set=dashboard", "--variant=broken"] }

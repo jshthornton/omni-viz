@@ -1,0 +1,27 @@
+# Unreal capture container — Epic publishes official images on
+# ghcr.io/epicgames/unreal-engine but access is gated: you must link your
+# Epic account (community license sign-up) and use a GitHub PAT with the
+# EpicGames org granted. Community-built images exist on Docker Hub but are
+# not vendor-blessed.
+#
+# One-time setup:
+#   1. Sign the Unreal EULA at https://www.unrealengine.com/en-US/ue-on-github
+#      (links your GitHub account to EpicGames org access)
+#   2. Create a PAT with read:packages, then:
+#      echo $PAT | podman login ghcr.io -u <github-user> --password-stdin
+#   3. Now pulls work:
+#      podman pull ghcr.io/epicgames/unreal-engine:dev-slim-5.4.3
+#      (dev-slim is ~13GB; runtime-slim smaller but no editor)
+#
+# Then (example):
+#   podman run --rm --device /dev/kvm -v $REPO:/repo -v $PROJECT:/project \
+#     ghcr.io/epicgames/unreal-engine:dev-slim-5.4.3 \
+#     /repo/examples/unreal-capture/run-ue.sh /Game/Tests/Lobby -deterministic
+#
+# Rendering: the editor needs GL/Vulkan. On GPU hosts pass the container
+# toolkit flags; in software, mesa llvmpipe renders but slowly (fine for
+# 1280x720 stills, wrong for timing-sensitive captures).
+FROM ghcr.io/epicgames/unreal-engine:dev-slim-5.4.3
+
+# The run-ue.sh wrapper + omniviz arrive via bind mounts (see above);
+# Unreal env (UE_ROOT etc.) is already configured by the base image.

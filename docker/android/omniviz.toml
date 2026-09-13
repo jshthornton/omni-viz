@@ -1,0 +1,42 @@
+# omniviz (container) — Android emulator captures of the system Settings
+# app: a real system screen, no APK build required. Your own app works
+# identically (deeplinks + your package id — see examples/android-capture).
+#
+# NOTE: the emulator boots at 1080x2400@440dpi (pinned in the Containerfile
+# AVD config); the [render] block documents the capture size but adb
+# screencap always captures the real display.
+baseline_dir = "baselines"
+output_dir = "tmp"
+
+[render]
+width = 1080
+height = 2400
+
+[defaults]
+driver = "command"
+record = false
+threshold = 0.1
+max_changed = 0.02          # settings screens carry a clock in the status bar
+timeout = 180
+serial = true               # one emulator, one screen at a time
+
+[driver.command]
+command = ["/work/capture.sh", "--app=com.android.settings"]
+
+[[shot]]
+name = "settings-main"
+args = ["--screen=main", "--action=android.settings.SETTINGS"]
+
+[[shot]]
+name = "display"
+args = ["--screen=display", "--action=android.settings.DISPLAY_SETTINGS"]
+
+[[shot]]
+name = "about"
+args = ["--screen=about", "--action=android.settings.DEVICE_INFO_SETTINGS"]
+
+# intentional-ish failure: security screen differs from the baseline by
+# real UI — captures the "deploy changed the layout" workflow for system UI
+[[shot]]
+name = "security"
+args = ["--screen=security", "--action=android.settings.SECURITY_SETTINGS"]

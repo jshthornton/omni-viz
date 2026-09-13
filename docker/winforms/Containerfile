@@ -1,0 +1,16 @@
+# WinForms capture verification — Mono runs System.Windows.Forms on Linux,
+# so the "app captures itself with DrawToBitmap" contract is verifiable with
+# zero Windows and zero licenses. The .NET 8 version in
+# examples/winforms-capture/src is the real-deal Windows variant; this Mono
+# variant (docker/winforms/Program.cs) exists because mono's C# compiler
+# predates file-scoped namespaces. Both follow the identical omniviz
+# contract: paint deterministically → DrawToBitmap → save → exit.
+FROM docker.io/debian:12-slim
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        mono-devel xvfb xauth ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /work
+COPY Program.cs /work/Program.cs
+RUN mcs -r:System.Windows.Forms -r:System.Drawing Program.cs -out:CaptureApp.exe

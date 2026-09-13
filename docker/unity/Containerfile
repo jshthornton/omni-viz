@@ -1,0 +1,24 @@
+# Unity capture container — GameCI's editor images run Unity batchmode
+# headless. ONE thing is needed beyond this file: a Unity license.
+#
+# Unity Personal (free) is enough. Get a license file (.ulf) once:
+#   1. docker/podman run -it --rm -v $PWD/license:/license unityci/editor:ubuntu-2022.3.52f1-base-3
+#   2. inside: unity-editor -batchmode -nographics -quit -serial <SERIAL> -password <PASS> -logFile /dev/stdout
+#      (Personal: use `unity-editor -manualLicenseFile Unity_lic.alf` flow via
+#      license.ulfmaker.com, or GameCI's activation CLI)
+#   3. put the resulting Unity_v2022.3.52f1.ulf into ./license/
+#
+# Then verify.sh-style run:
+#   podman run --rm -v $REPO:/repo -v ./license:/license:ro \
+#     -e UNITY_LICENSE=$(cat license/Unity_v2022.3.52f1.ulf) \
+#     unityci/editor:ubuntu-2022.3.52f1-base-3 \
+#     bash -c 'mkdir -p /project && echo put your Unity project in /project'
+#
+# Requires a GPU runner for real rendering (batchmode + -nographics cannot
+# ScreenCapture). GameCI documents NVIDIA/AMD container toolkits; software
+# GL via llvmpipe works but is slow.
+FROM unityci/editor:ubuntu-2022.3.52f1-base-3
+
+# The Unity project (with Assets/Editor/VisualTestCapture.cs from
+# examples/unity-capture) is bind-mounted at /project; omniviz at /repo.
+ENV UNITY_LICENSE=""

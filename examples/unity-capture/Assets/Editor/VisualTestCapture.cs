@@ -78,10 +78,13 @@ public static class VisualTestCapture
 
     static string GetArg(string name, string fallback)
     {
+        // accept both "--scene Lobby" and "--scene=Lobby"
         var args = System.Environment.GetCommandLineArgs();
-        for (int i = 0; i < args.Length - 1; i++)
-            if (args[i] == name)
-                return args[i + 1];
+        for (int i = 0; i < args.Length; i++)
+        {
+            if (args[i] == name && i + 1 < args.Length) return args[i + 1];
+            if (args[i].StartsWith(name + "=")) return args[i].Substring(name.Length + 1);
+        }
         return fallback;
     }
 }
